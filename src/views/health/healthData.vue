@@ -12,7 +12,7 @@
           <div class="current-value">{{latestHealthData.heartRate}}</div>
           <div class="unit">BPM</div>
           <div class="chart">
-            <div ref="chartRef" style="width: 100%; height: 100%"></div>
+            <div ref="heartRateChartRef" style="width: 100%; height: 100%"></div>
           </div>
         </div>
       </div>
@@ -108,6 +108,7 @@ import * as echarts from 'echarts'
 import axios from 'axios'
 import { useStore } from 'vuex'
 
+
 import {
   HeartPulse as HeartPulseIcon,
   Moon as MoonIcon,
@@ -120,21 +121,129 @@ import {
 const store = useStore()
 const router = useRouter()
 const healthDataHistory = ref([])
+const heartRateHistory = ref([])
 const loading = ref(false)
 const error = ref(null)
-const chartRef = ref(null)
-let myChart = null
 let resizeHandler = null
-const healthData = ref({
-  heartRate: 0,
-  sleepDuration: 0,
-  sleepQuality: '-',
-  steps: 0,
-  bloodPressureSystolic: 0,
-  bloodPressureDiastolic: 0,
-  weight: 0,
-  bmi: 0
-})
+const heartRateChartRef = ref(null)
+let heartRateChart = null
+
+const fetchHeartRateData = async () => {
+  try {
+    const userId = store.state.user?.id
+    if (!userId) {
+      console.error('User ID not found')
+      return
+    }
+
+    const response = await axios.get(`http://localhost:8088/api/health/${userId}/heart-rate`, {
+      params: {
+        period: 'week' // 默认显示周数据
+      }
+    })
+
+    if (response.data) {
+      heartRateHistory.value = response.data
+          .map(item => ({
+            time: new Date(item.measurementTime).toLocaleString('zh-CN', {
+              month: '2-digit',
+              day: '2-digit',
+              hour: '2-digit',
+              minute: '2-digit'
+            }),
+            value: item.heartRate,
+            timestamp: new Date(item.measurementTime).getTime()
+          }))
+          .sort((a, b) => a.timestamp - b.timestamp) // 按时间升序排序
+
+      updateHeartRateChart()
+    }
+  } catch (error) {
+    console.error('Failed to fetch heart rate data:', error)
+  }
+}
+
+// 更新心率图表
+const updateHeartRateChart = () => {
+  if (!heartRateChart || !heartRateChartRef.value) return
+
+  const option = {
+    grid: {
+      top: 5,
+      right: 5,
+      bottom: 10,
+      left: 20,
+      containLabel: true
+    },
+    tooltip: {
+      trigger: 'axis',
+      formatter: function(params) {
+        return `${params[0].name}<br/>心率: ${params[0].value} BPM`
+      }
+    },
+    xAxis: {
+      type: 'category',
+      boundaryGap: false,
+      data: heartRateHistory.value.map(item => item.time),
+      axisLine: {
+        lineStyle: {
+          color: '#ddd'
+        }
+      },
+      axisLabel: {
+        fontSize: 10,
+        interval: Math.floor(heartRateHistory.value.length / 4)
+      },
+      show: false
+    },
+    yAxis: {
+      type: 'value',
+      name: 'BPM',
+      nameTextStyle: {
+        padding: [0, 0, 0, 30]
+      },
+      splitLine: {
+        lineStyle: {
+          color: '#eee'
+        }
+      },
+      axisLine: {
+        lineStyle: {
+          color: '#ddd'
+        }
+      },
+      show: false
+    },
+    series: [{
+      data: heartRateHistory.value.map(item => item.value),
+      type: 'line',
+      smooth: true,
+      symbolSize: 4,
+      lineStyle: {
+        color: '#409EFF',
+        width: 2
+      },
+      areaStyle: {
+        color: {
+          type: 'linear',
+          x: 0,
+          y: 0,
+          x2: 0,
+          y2: 1,
+          colorStops: [{
+            offset: 0,
+            color: 'rgba(64,158,255,0.2)'
+          }, {
+            offset: 1,
+            color: 'rgba(64,158,255,0)'
+          }]
+        }
+      }
+    }]
+  }
+
+  heartRateChart.setOption(option)
+}
 
 //睡眠时间小数->小时制
 const formatSleepDuration = computed(() => {
@@ -199,78 +308,26 @@ const chartData = [
 
 onMounted(async () => {
   await fetchHealthData()
+  await fetchHeartRateData()
   await nextTick()
-  const chartDom = chartRef.value
-  console.log('chartDom:', chartDom)
-  console.log('echarts:', echarts)
-  if (chartDom) {
-    console.log('容器尺寸:', chartDom.offsetWidth, chartDom.offsetHeight)
-    myChart = echarts.init(chartDom)
+  if (heartRateChartRef.value) {
+    heartRateChart = echarts.init(heartRateChartRef.value)
+    updateHeartRateChart()
 
-    const option = {
-      grid: {
-        top: 10,
-        right: 10,
-        bottom: 10,
-        left: 10,
-        containLabel: true
-      },
-      xAxis: {
-        type: 'category',
-        data: chartData.map(item => item.time),
-        show: false
-      },
-      yAxis: {
-        type: 'value',
-        show: false
-      },
-      series: [{
-        data: chartData.map(item => item.value),
-        type: 'line',
-        smooth: true,
-        symbolSize: 0,
-        lineStyle: {
-          color: '#409EFF',
-          width: 2
-        },
-        areaStyle: {
-          color: {
-            type: 'linear',
-            x: 0,
-            y: 0,
-            x2: 0,
-            y2: 1,
-            colorStops: [{
-              offset: 0,
-              color: 'rgba(64,158,255,0.2)'
-            }, {
-              offset: 1,
-              color: 'rgba(64,158,255,0)'
-            }]
-          }
-        }
-      }]
-    }
-
-    // 在这里设置 option
-    myChart.setOption(option)
-
-    // 处理窗口大小变化
     resizeHandler = () => {
-      myChart?.resize()
+      heartRateChart?.resize()
     }
     window.addEventListener('resize', resizeHandler)
   }
 })
 
-// onUnmounted 钩子移到这里，与 onMounted 同级
 onUnmounted(() => {
   if (resizeHandler) {
     window.removeEventListener('resize', resizeHandler)
   }
-  if (myChart) {
-    myChart.dispose()
-    myChart = null
+  if (heartRateChart) {
+    heartRateChart.dispose()
+    heartRateChart = null
   }
 })
 // 处理错误的方法
