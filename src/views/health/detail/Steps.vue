@@ -263,6 +263,27 @@ const validateSteps = (value) => {
   return true
 }
 
+const checkStepsWarnings = (newSteps, recentData) => {
+  if (recentData.length < 2) return;
+
+  // 检查单次记录是否异常
+  if (newSteps > 50000) {
+    ElMessage.warning('当前步数记录偏高，请确认数据准确性');
+    return;
+  }
+
+  // 计算与上次记录的差异
+  const lastRecord = recentData[0];
+  const timeDiff = (new Date() - new Date(lastRecord.timestamp)) / (1000 * 60 * 60); // 小时差
+
+  if (timeDiff < 24) { // 如果是同一天内的记录
+    const stepsDiff = Math.abs(newSteps - lastRecord.value);
+    if (stepsDiff > 20000) {
+      ElMessage.warning('检测到步数变化较大，请确认数据准确性');
+    }
+  }
+};
+
 // 记录步数
 const recordSteps = async () => {
   inputError.value = false
@@ -293,6 +314,7 @@ const recordSteps = async () => {
       newSteps.value = ''
       await fetchStepsData(selectedPeriod.value)
       ElMessage.success('步数记录成功')
+      checkStepsWarnings(Number(newSteps.value), stepsHistory.value);
       showRecordModal.value = false
     }
   } catch (error) {
@@ -430,10 +452,10 @@ onUnmounted(() => {
 <style scoped>
 .steps-detail {
   padding: 20px;
-  height: 100%;           /* 保证容器占满父元素高度 */
+  height: 100%;
   background-color: #f8fafc;
-  overflow-y: auto;       /* 允许垂直滚动 */
-  box-sizing: border-box; /* 确保padding不会增加总高度 */
+  overflow-y: auto;
+  box-sizing: border-box;
 }
 
 .progress-status {

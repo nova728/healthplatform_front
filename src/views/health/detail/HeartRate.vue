@@ -196,47 +196,41 @@ const timePeriods = [
   { label: '月', value: 'month' }
 ]
 
-// 监听心率历史数据变化
-watch(heartRateHistory, (newData) => {
-  if (newData.length > 0) {
-    // 更新异常心率计数
-    abnormalHeartRateCount.value = newData.filter(record =>
-        record.value < 60 || record.value > 100
-    ).length
+const checkHeartRateWarnings = (newRate, recentData) => {
+  if (recentData.length < 1) return;
 
-    // 检查是否有连续的异常心率记录
-    let consecutiveAbnormal = 0
-    for (let i = 0; i < newData.length; i++) {
-      if (newData[i].value < 60 || newData[i].value > 100) {
-        consecutiveAbnormal++
-        if (consecutiveAbnormal >= 3) {
-          ElMessage.warning('检测到连续异常心率记录，请注意身体状况')
-          break
-        }
-      } else {
-        consecutiveAbnormal = 0
-      }
+  // 检查心率是否在正常范围内
+  if (newRate < 60) {
+    ElMessage.warning('当前心率偏低，请注意休息');
+    return;
+  }
+
+  if (newRate > 100) {
+    ElMessage.warning('当前心率偏高，建议放松一下');
+    return;
+  }
+
+  // 检查与上次记录的心率变化
+  const lastRate = recentData[0].value;
+  const rateChange = Math.abs(newRate - lastRate);
+
+  if (rateChange > 20) {
+    ElMessage.warning(`心率变化幅度较大 (${rateChange} BPM)，请注意身体状况`);
+  }
+
+  // 检查连续异常记录
+  let consecutiveAbnormal = 0;
+  for (let i = 0; i < Math.min(3, recentData.length); i++) {
+    if (recentData[i].value < 60 || recentData[i].value > 100) {
+      consecutiveAbnormal++;
     }
   }
-}, { deep: true })
 
-// 监听最新心率变化
-watch(latestHeartRate, (newRate, oldRate) => {
-  if (newRate !== oldRate) {
-    // 检查心率突变
-    const change = Math.abs(newRate - oldRate)
-    if (change > 20) {
-      ElMessage.warning(`心率变化幅度较大 (${change} BPM)，请注意身体状况`)
-    }
-
-    // 检查心率范围
-    if (newRate < 60) {
-      ElMessage.warning('当前心率偏低，请注意休息')
-    } else if (newRate > 100) {
-      ElMessage.warning('当前心率偏高，建议放松一下')
-    }
+  if (consecutiveAbnormal >= 2 && (newRate < 60 || newRate > 100)) {
+    ElMessage.warning('检测到连续异常心率记录，请注意身体状况');
   }
-})
+};
+
 
 // 监听选择的时间周期变化
 watch(selectedPeriod, (newPeriod) => {
@@ -304,6 +298,7 @@ const recordHeartRate = async () => {
       newHeartRate.value = ''
       await fetchHeartRateData(selectedPeriod.value)
       ElMessage.success('心率记录成功')
+      checkHeartRateWarnings(Number(newHeartRate.value), heartRateHistory.value);
       showRecordModal.value = false  // 成功后关闭模态框
     }
   } catch (error) {

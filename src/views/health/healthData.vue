@@ -73,6 +73,25 @@
         </div>
       </div>
 
+      <!-- 身高模块 -->
+      <div class="data-card vertical" @click="navigateTo('height')">
+        <div class="card-header">
+          <RulerIcon class="card-icon" />
+          <span>身高</span>
+        </div>
+        <div class="card-content height-content">
+          <div class="height-display">
+            <div class="height-value">{{ latestHealthData.height || '--' }}</div>
+            <div class="unit">cm</div>
+          </div>
+          <div class="height-visual">
+            <div class="ruler">
+              <div class="marker" :style="{ bottom: heightPercentage + '%' }"></div>
+            </div>
+          </div>
+        </div>
+      </div>
+
       <!-- 体重模块 -->
       <div class="data-card small" @click="navigateTo('weight')">
         <div class="card-header">
@@ -80,7 +99,6 @@
           <span>体重</span>
         </div>
         <div class="card-content">
-          <!-- 体重模块 -->
           <div class="weight-value">{{ latestHealthData.weight }}</div>
           <div class="unit">kg</div>
         </div>
@@ -108,14 +126,14 @@ import * as echarts from 'echarts'
 import axios from 'axios'
 import { useStore } from 'vuex'
 
-
 import {
   HeartPulse as HeartPulseIcon,
   Moon as MoonIcon,
   Footprints as FootprintsIcon,
   Activity as ActivityIcon,
   Scale as ScaleIcon,
-  ActivitySquare as ActivitySquareIcon
+  ActivitySquare as ActivitySquareIcon,
+  Ruler as RulerIcon,
 } from 'lucide-vue-next'
 
 const store = useStore()
@@ -127,6 +145,14 @@ const error = ref(null)
 let resizeHandler = null
 const heartRateChartRef = ref(null)
 let heartRateChart = null
+
+// 计算身高百分比
+const heightPercentage = computed(() => {
+  const height = latestHealthData.value.height
+  if (!height) return 0
+  // 假设身高范围在140-200cm之间
+  return Math.min(100, Math.max(0, ((height - 140) / (200 - 140)) * 100))
+})
 
 const fetchHeartRateData = async () => {
   try {
@@ -369,6 +395,67 @@ const navigateTo = (route) => {
   cursor: pointer;
 }
 
+.data-card.vertical {
+  grid-row: span 2;
+  display: flex;
+  flex-direction: column;
+}
+
+.height-content {
+  display: flex;
+  flex-direction: column;
+  justify-content: space-between;
+  height: 100%;
+  padding: 20px 0;
+}
+
+.height-display {
+  text-align: center;
+}
+
+.height-value {
+  font-size: 36px;
+  font-weight: 600;
+  color: #303133;
+}
+
+.height-visual {
+  flex: 1;
+  display: flex;
+  justify-content: center;
+  align-items: center;
+  margin-top: 20px;
+}
+
+.ruler {
+  width: 8px;
+  height: 80%;
+  background: #f0f2f5;
+  border-radius: 4px;
+  position: relative;
+}
+
+.marker {
+  position: absolute;
+  left: 50%;
+  transform: translateX(-50%);
+  width: 16px;
+  height: 16px;
+  background: #409EFF;
+  border-radius: 50%;
+  box-shadow: 0 2px 4px rgba(0, 0, 0, 0.1);
+  transition: bottom 0.3s ease;
+}
+
+.ruler::before {
+  content: '';
+  position: absolute;
+  left: -8px;
+  right: -8px;
+  height: 2px;
+  background: #e4e7ed;
+}
+
 .data-card:hover {
   transform: translateY(-4px);
   box-shadow: 0 4px 20px rgba(0, 0, 0, 0.12);
@@ -526,6 +613,14 @@ const navigateTo = (route) => {
   .data-grid {
     grid-template-columns: repeat(2, 1fr);
   }
+
+  .data-card.large {
+    grid-column: span 2;
+  }
+
+  .data-card.vertical {
+    grid-column: span 1;
+  }
 }
 
 @media (max-width: 768px) {
@@ -535,6 +630,7 @@ const navigateTo = (route) => {
 
   .data-card.large,
   .data-card.medium,
+  .data-card.vertical,
   .data-card.small {
     grid-column: span 1;
     grid-row: span 1;

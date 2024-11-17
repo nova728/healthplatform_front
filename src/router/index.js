@@ -95,6 +95,11 @@ const routes = [
                 path: 'bmi',
                 name: 'BMIDetail',
                 component: () => import('../views/health/detail/BMI.vue')
+            },
+            {
+                path:'height',
+                name: 'HeightDetail',
+                component: () => import('../views/health/detail/Height.vue')
             }
         ]
     }
