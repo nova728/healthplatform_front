@@ -78,14 +78,21 @@
       </div>
     </div>
   </div>
+  <CreatePostDialog ref="createPostDialogRef" />
 </template>
 
 <script setup>
 import { ref } from 'vue'
 import { Search, Plus, ChatDotRound, Sunny, QuestionFilled, Medal, View, ChatRound, Star } from '@element-plus/icons-vue'
+import CreatePostDialog from "@/views/forum/CreatePostDialog.vue";
 
 const searchText = ref('')
 const activeCategory = ref('1')
+const createPostDialogRef = ref(null)
+
+const createPost = () => {
+  createPostDialogRef.value.dialogVisible = true
+}
 
 // 模拟的帖子数据
 const posts = ref([
@@ -114,10 +121,6 @@ const posts = ref([
     likes: 65
   }
 ])
-
-const createPost = () => {
-  // 实现发帖逻辑
-}
 
 const handleCategorySelect = (key) => {
   activeCategory.value = key
