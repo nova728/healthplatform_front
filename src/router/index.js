@@ -32,6 +32,11 @@ const routes = [
         component: () => import('../views/forum.vue')
     },
     {
+        path: '/article/editor',
+        name: 'ArticleEditor',
+        component: () => import('../views/forum/ArticleEditor.vue')
+    },
+    {
       path: '/setting',
       name: 'Setting',
       component: () => import('../views/setting.vue')

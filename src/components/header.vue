@@ -46,7 +46,12 @@
         <el-sub-menu index="3" class="user-menu">
           <template #title>
             <div class="user-info">
-              <img src="/src/assets/images/avatar.png" alt="User Avatar" class="avatar" />
+              <img
+                  :src="userAvatar"
+                  :alt="userName"
+                  class="avatar"
+                  @error="handleAvatarError"
+              />
               <span class="user-name">{{ userName }}</span>
             </div>
           </template>
@@ -68,7 +73,7 @@
 </template>
 
 <script setup>
-import { ref, inject } from 'vue';
+import { ref, inject,computed,onMounted } from 'vue';
 import { useRouter } from 'vue-router';
 import { useStore } from 'vuex';
 
@@ -76,7 +81,25 @@ const router = useRouter();
 const store = useStore();
 const activeIndex = ref('1');
 const isLoggedIn = inject('isLoggedIn');
-const userName = ref('User');
+const defaultAvatar = '/src/assets/images/avatar.png';
+
+const user = computed(() => store.state.user);
+const userName = computed(() => user.value?.username || 'User');
+const userAvatar = computed(() => user.value?.avatar || defaultAvatar);
+
+const handleAvatarError = (e) => {
+  e.target.src = defaultAvatar;
+};
+
+onMounted(async () => {
+  if (isLoggedIn.value) {
+    try {
+      await store.dispatch('getUserInfo'); // 确保在 Vuex 中实现此 action
+    } catch (error) {
+      console.error('Failed to fetch user info:', error);
+    }
+  }
+});
 
 const menuItems = [
   {index: '0', label: '首页', route: 'Home' },
@@ -254,4 +277,15 @@ const handleSelect = (key, keyPath) => console.log(key, keyPath);
   height: 18px;
   opacity: 0.8;
 }
+
+.avatar {
+  width: 32px;
+  height: 32px;
+  border-radius: 50%;
+  border: 2px solid #fff;
+  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.1);
+  transition: all 0.3s ease;
+  object-fit: cover; /* 确保图片适当裁剪以填充圆形区域 */
+}
+
 </style>
