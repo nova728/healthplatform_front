@@ -103,6 +103,8 @@
         <el-upload
             class="avatar-uploader"
             :show-file-list="false"
+            :auto-upload="false"
+            :http-request="handleCustomUpload"
             :before-upload="beforeAvatarUpload"
             :on-change="handleAvatarChange"
             accept="image/*"
@@ -186,8 +188,9 @@ import axios from 'axios'
 import store from "@/store/index.js"
 import { Camera, Edit, House, Lock, Plus, UserFilled } from "@element-plus/icons-vue"
 
+const defaultAvatar = 'https://cube.elemecdn.com/3/7c/3ea6beec64369c2642b92c6726f1epng.png'
+
 const state = reactive({
-  circleUrl: 'https://cube.elemecdn.com/3/7c/3ea6beec64369c2642b92c6726f1epng.png',
   avatarDialogVisible: false,
   editDialogVisible: false,
   userInfo: store.state.user || {
@@ -206,7 +209,6 @@ const state = reactive({
 })
 
 const {
-  circleUrl,
   avatarDialogVisible,
   editDialogVisible,
   userInfo,
@@ -253,10 +255,29 @@ const openEditDialog = () => {
   editDialogVisible.value = true
 }
 
+// 处理头像加载错误
+const handleAvatarError = () => {
+  userInfo.value.avatar = defaultAvatar
+}
+
+// 处理对话框关闭
+const handleDialogClose = () => {
+  state.imageUrl = ''
+  state.imageFile = null
+  // 如果存在之前创建的 blob URL，需要释放它
+  if (state.imageUrl && state.imageUrl.startsWith('blob:')) {
+    URL.revokeObjectURL(state.imageUrl)
+  }
+}
+
 // 处理头像选择改变
 const handleAvatarChange = (uploadFile) => {
   const file = uploadFile.raw
   if (file) {
+    // 如果之前有 blob URL，先释放它
+    if (state.imageUrl && state.imageUrl.startsWith('blob:')) {
+      URL.revokeObjectURL(state.imageUrl)
+    }
     state.imageFile = file
     state.imageUrl = URL.createObjectURL(file)
   }
@@ -277,7 +298,14 @@ const beforeAvatarUpload = (file) => {
   return isJPGOrPNG && isLt2M
 }
 
-// 处理头像上传
+// 添加自定义上传处理函数
+const handleCustomUpload = async (options) => {
+  // 这个函数不会被调用，因为我们设置了 auto-upload="false"
+  // 实际上传在 handleAvatarUpload 中处理
+}
+
+// 修改头像上传处理函数
+// 修改 handleAvatarUpload 函数
 const handleAvatarUpload = async () => {
   if (!state.imageFile) {
     ElMessage.warning('请先选择图片')
@@ -294,23 +322,34 @@ const handleAvatarUpload = async () => {
         formData,
         {
           headers: {
-            'Content-Type': 'multipart/form-data'
+            'Content-Type': 'multipart/form-data',
+            'Authorization': `Bearer ${store.state.token}`
           }
         }
     )
 
-    if (response.status === 200) {
+    // 添加调试输出
+    console.log('完整响应对象:', response)
+    console.log('响应数据:', response.data)
+    console.log('状态码:', response.status)
+    console.log('响应头:', response.headers)
+
+    if (response.data.code === 200) {
       ElMessage.success('头像上传成功')
-      userInfo.value.avatar = response.data.avatarUrl || state.imageUrl
-      store.commit('setUser', { ...store.state.user, avatar: userInfo.value.avatar })
+      console.log('头像URL:', response.data.data) // 查看具体的URL值
+
+      const avatarUrl = response.data.data
+      userInfo.value.avatar = avatarUrl
+      store.commit('setUser', { ...store.state.user, avatar: avatarUrl })
+
+      handleDialogClose()
       avatarDialogVisible.value = false
-      // 清理预览状态
-      state.imageUrl = ''
-      state.imageFile = null
+    } else {
+      throw new Error(response.data.message || '上传失败')
     }
   } catch (error) {
-    console.error('上传失败:', error)
-    ElMessage.error('头像上传失败，请重试')
+    console.error('上传失败详细信息:', error.response || error)
+    ElMessage.error(error.message || '头像上传失败，请重试')
   } finally {
     state.uploadLoading = false
   }

@@ -164,8 +164,8 @@
       <el-form :model="publishForm" label-width="100px">
         <el-form-item label="发布时间">
           <el-radio-group v-model="publishForm.timeType">
-            <el-radio label="now">立即发布</el-radio>
-            <el-radio label="schedule">定时发布</el-radio>
+            <el-radio :value="'now'">立即发布</el-radio>
+            <el-radio :value="'schedule'">定时发布</el-radio>
           </el-radio-group>
         </el-form-item>
 
@@ -180,8 +180,8 @@
 
         <el-form-item label="文章可见性">
           <el-radio-group v-model="publishForm.visibility">
-            <el-radio label="public">公开</el-radio>
-            <el-radio label="private">私密</el-radio>
+            <el-radio :value="'public'">公开</el-radio>
+            <el-radio :value="'private'">私密</el-radio>
           </el-radio-group>
         </el-form-item>
 
@@ -271,6 +271,7 @@
 <script setup>
 import { ref, reactive, onMounted, onBeforeUnmount,nextTick } from 'vue'
 import { useRoute, useRouter } from 'vue-router'
+import {useStore} from 'vuex'
 import { debounce } from 'lodash'
 import { Editor } from '@tiptap/vue-3'
 import StarterKit from '@tiptap/starter-kit'
@@ -300,6 +301,7 @@ import {
 
 const route = useRoute()
 const router = useRouter()
+const store = useStore()
 const articleId = ref(route.params.id)
 
 // 编辑器状态
@@ -314,9 +316,13 @@ const articleForm = reactive({
   title: '',
   content: '',
   htmlContent: '',
+  coverImage: '',
   categoryId: null,
+  status: 0,           // 新增
+  visibility: 'public', // 新增
+  allowComment: true,   // 新增
   tags: [],
-  coverImage: ''
+  publishTime: null    // 新增
 })
 
 // 发布对话框
@@ -373,9 +379,10 @@ onMounted(() => {
     ],
     content: '',
     onUpdate: ({ editor }) => {
-      articleForm.content = editor.getText()
-      articleForm.htmlContent = editor.getHTML()
-      autoSave()
+      articleForm.content = editor.getText();
+      articleForm.htmlContent = editor.getHTML();
+      // 使用Promise包装自动保存调用
+      Promise.resolve().then(() => autoSave());
     }
   })
 
@@ -383,9 +390,6 @@ onMounted(() => {
   if (articleId.value) {
     loadArticle()
   }
-
-  // 设置自动保存
-  window.addEventListener('beforeunload', handleBeforeUnload)
 })
 
 onBeforeUnmount(() => {
@@ -446,7 +450,6 @@ const removeTag = (tag) => {
   articleForm.tags = articleForm.tags.filter(t => t !== tag)
 }
 
-// ArticleEditor.vue (continued...)
 
 // 图片上传相关方法
 const beforeImageUpload = (file) => {
@@ -462,31 +465,6 @@ const beforeImageUpload = (file) => {
     return false
   }
   return true
-}
-
-const uploadImage = async ({ file }) => {
-  try {
-    const formData = new FormData()
-    formData.append('file', file)
-
-    const response = await fetch('/api/articles/upload-image', {
-      method: 'POST',
-      body: formData,
-      headers: {
-        'Authorization': `Bearer ${localStorage.getItem('token')}`
-      }
-    })
-
-    if (!response.ok) throw new Error('上传失败')
-
-    const { url } = await response.json()
-    editor.value.chain().focus().setImage({ src: url }).run()
-    imageDialogVisible.value = false
-    ElMessage.success('图片上传成功')
-  } catch (error) {
-    console.error('图片上传失败:', error)
-    ElMessage.error('图片上传失败')
-  }
 }
 
 const insertImageUrl = () => {
@@ -513,30 +491,6 @@ const beforeCoverUpload = (file) => {
   return true
 }
 
-const uploadCover = async ({ file }) => {
-  try {
-    const formData = new FormData()
-    formData.append('file', file)
-
-    const response = await fetch('/api/articles/upload-image', {
-      method: 'POST',
-      body: formData,
-      headers: {
-        'Authorization': `Bearer ${localStorage.getItem('token')}`
-      }
-    })
-
-    if (!response.ok) throw new Error('上传失败')
-
-    const { url } = await response.json()
-    articleForm.coverImage = url
-    ElMessage.success('封面上传成功')
-  } catch (error) {
-    console.error('封面上传失败:', error)
-    ElMessage.error('封面上传失败')
-  }
-}
-
 // 链接插入方法
 const confirmInsertLink = () => {
   if (linkForm.url) {
@@ -552,61 +506,127 @@ const confirmInsertLink = () => {
   }
 }
 
-// 文章保存和发布
-const autoSave = debounce(async () => {  // 使用导入的 debounce
-  if (!articleForm.title || !articleForm.content) return
+// 自动保存方法
+const autoSave = debounce(async () => {
+  if (!articleForm.title?.trim()) return;
 
   try {
-    isSaving.value = true
-    saveStatus.value = '正在保存...'
+    isSaving.value = true;
+    saveStatus.value = '正在保存...';
 
+    const userId = store.state.user.id;
+    console.log('用户ID：',userId);
+
+    // 构造请求数据
     const articleData = {
-      ...articleForm,
-      status: 0 // 草稿状态
-    }
+      title: articleForm.title,
+      content: editor.value.getText() || '',
+      htmlContent: editor.value.getHTML() || '',
+      categoryId: articleForm.categoryId || 1,
+      status: 0,
+      visibility: articleForm.visibility || 'public',
+      allowComment: articleForm.allowComment ?? true,
+      tags: Array.isArray(articleForm.tags) ? articleForm.tags : [],
+      coverImage: articleForm.coverImage || '',
+      publishTime: articleForm.publishTime || null
+    };
 
+    let response;
     if (articleId.value) {
-      await updateArticle(articleData)
+      response = await updateArticle(articleData, userId);
     } else {
-      const response = await createArticle(articleData)
-      articleId.value = response.id
-      router.replace(`/editor/${response.id}`)
+      response = await createArticle(articleData, userId);
     }
 
-    saveStatus.value = '所有更改已保存'
-  } catch (error) {
-    console.error('自动保存失败:', error)
-    saveStatus.value = '保存失败'
-    ElMessage.error('自动保存失败')
-  } finally {
-    isSaving.value = false
-  }
-}, 2000)
+    if (!articleId.value && response.result?.id) {
+      articleId.value = response.result.id;
+      router.replace(`/editor/${response.result.id}`);
+    }
 
-const saveDraft = async () => {
+    saveStatus.value = '所有更改已保存';
+  } catch (error) {
+    console.error('自动保存失败:', error);
+    saveStatus.value = '保存失败';
+    ElMessage.error(error.message || '保存失败');
+  } finally {
+    isSaving.value = false;
+  }
+}, 3000);
+
+const publishArticle = async () => {
   try {
-    isSaving.value = true
+    if (!validateArticleForm()) return;
+
+    isPublishing.value = true;
+    const userId = store.state.user.id;
+
+    if (!userId) {
+      throw new Error('请先登录');
+    }
+
     const articleData = {
-      ...articleForm,
-      status: 0 // 草稿状态
-    }
+      title: articleForm.title,
+      content: editor.value.getText(),
+      htmlContent: editor.value.getHTML(),
+      coverImage: articleForm.coverImage || '',
+      categoryId: articleForm.categoryId,
+      status: 1,
+      visibility: publishForm.visibility,
+      allowComment: publishForm.allowComment,
+      publishTime: publishForm.timeType === 'schedule' ?
+          publishForm.scheduleTime?.toISOString() :
+          new Date().toISOString(),
+      tags: Array.from(articleForm.tags || [])
+    };
 
+    console.log(articleData);
+
+    let response;
     if (articleId.value) {
-      await updateArticle(articleData)
+      response = await updateArticle(articleData, userId);
+      console.log('1:',response);
+      if (response.code === 200) {
+        ElMessage.success('文章更新成功');
+        publishDialogVisible.value = false;
+        await router.push(`/article/${articleId.value}`);
+      } else {
+        throw new Error(response.message || '更新失败');
+      }
     } else {
-      const response = await createArticle(articleData)
-      articleId.value = response.id
-      router.replace(`/editor/${response.id}`)
+      response = await createArticle(articleData, userId);
+      console.log('2:',response);
+      if (response.code === 200) {
+        ElMessage.success('文章发布成功');
+        publishDialogVisible.value = false;
+        await router.push(`/article/${response.data.id}`);
+      } else {
+        throw new Error(response.message || '发布失败');
+      }
     }
-
-    ElMessage.success('草稿保存成功')
   } catch (error) {
-    console.error('保存草稿失败:', error)
-    ElMessage.error('保存草稿失败')
+    console.error('发布失败:', error);
+    ElMessage.error(error.message || '文章发布失败');
   } finally {
-    isSaving.value = false
+    isPublishing.value = false;
   }
-}
+};
+
+// 保存草稿
+const validateArticleForm = () => {
+  if (!articleForm.title?.trim()) {
+    ElMessage.warning('请填写文章标题');
+    return false;
+  }
+  if (!articleForm.content?.trim()) {
+    ElMessage.warning('请填写文章内容');
+    return false;
+  }
+  if (!articleForm.categoryId) {
+    ElMessage.warning('请选择文章分类');
+    return false;
+  }
+  return true;
+};
 
 const showPublishDialog = () => {
   if (!articleForm.title || !articleForm.content) {
@@ -616,91 +636,180 @@ const showPublishDialog = () => {
   publishDialogVisible.value = true
 }
 
-const publishArticle = async () => {
+
+
+// API Methods
+const BASE_URL = 'http://localhost:8088/api/articles';
+
+// 创建文章
+const createArticle = async (articleData, userId) => {
+  const response = await fetch(`${BASE_URL}/${userId}`, {
+    method: 'POST',
+    headers: {
+      'Content-Type': 'application/json'
+    },
+    credentials: 'include',
+    body: JSON.stringify(articleData)
+  });
+
+  const data = await response.json();
+  console.log('data:',data)
+  if (!response.ok) {
+    throw new Error(data.message || '创建文章失败');
+  }
+  return data;
+};
+
+// 更新文章
+const updateArticle = async (articleData, userId) => {
+  const response = await fetch(`${BASE_URL}/${userId}/${articleId.value}`, {
+    method: 'PUT',
+    headers: {
+      'Content-Type': 'application/json'
+    },
+    credentials: 'include',
+    body: JSON.stringify(articleData)
+  });
+
+  const data = await response.json();
+  if (!response.ok) {
+    throw new Error(data.message || '更新文章失败');
+  }
+  return data;
+};
+
+// 加载文章
+const loadArticle = async () => {
   try {
-    isPublishing.value = true
+    const userId = store.state.user.id
+    if (!userId || !articleId.value) return;
+
+    const response = await fetch(`${BASE_URL}/${userId}/${articleId.value}`, {
+      credentials: 'include'
+    });
+
+    const data = await response.json();
+    if (!response.ok) {
+      throw new Error(data.message || '加载文章失败');
+    }
+
+    // 更新表单数据
+    articleForm.title = data.result.title;
+    articleForm.content = data.result.content;
+    articleForm.categoryId = data.result.categoryId;
+    articleForm.tags = data.result.tags || [];
+    articleForm.coverImage = data.result.coverImage;
+    articleForm.visibility = data.result.visibility;
+    articleForm.allowComment = data.result.allowComment;
+
+    // 更新编辑器内容
+    editor.value.commands.setContent(data.result.htmlContent);
+  } catch (error) {
+    console.error('加载文章失败:', error);
+    ElMessage.error(error.message || '加载文章失败');
+  }
+}
+
+// 通用的图片上传方法
+const uploadImageToServer = async (file) => {
+  const userId = store.state.user.id;
+  if (!userId) {
+    throw new Error('请先登录');
+  }
+
+  const formData = new FormData();
+  formData.append('file', file);
+
+  const response = await fetch(`${BASE_URL}/${userId}/upload-image`, {
+    method: 'POST',
+    credentials: 'include',
+    body: formData
+  });
+
+  const data = await response.json();
+  console.log('Upload response data:', data);
+
+  if (!response.ok) {
+    throw new Error(data.message || '上传失败');
+  }
+
+  // 检查响应数据
+  if (!data.data || !data.data.url) {
+    console.error('Invalid response data:', data);
+    throw new Error('返回的URL格式不正确');
+  }
+
+  return data.data.url;  // 返回正确的URL
+};
+
+// 上传封面图片
+const uploadCover = async ({ file }) => {
+  try {
+    const url = await uploadImageToServer(file);
+    articleForm.coverImage = url;
+    ElMessage.success('封面上传成功');
+  } catch (error) {
+    console.error('封面上传失败:', error);
+    ElMessage.error(error.message || '封面上传失败');
+  }
+};
+
+// 上传内容图片
+const uploadImage = async ({ file }) => {
+  try {
+    const url = await uploadImageToServer(file);
+    editor.value.chain().focus().setImage({ src: url }).run();
+    imageDialogVisible.value = false;
+    ElMessage.success('图片上传成功');
+  } catch (error) {
+    console.error('图片上传失败:', error);
+    ElMessage.error(error.message || '图片上传失败');
+  }
+};
+
+// 保存草稿
+const saveDraft = async () => {
+  try {
+    if (!validateArticleForm()) {
+      return;
+    }
+
+    isSaving.value = true;
+    articleForm.status = 0; // 草稿状态
+
+    const userId = store.state.user.id
+    if (!userId) {
+      throw new Error('请先登录');
+    }
 
     const articleData = {
       ...articleForm,
-      status: 1, // 发布状态
-      scheduleTime: publishForm.timeType === 'schedule' ? publishForm.scheduleTime : null,
-      visibility: publishForm.visibility,
-      allowComment: publishForm.allowComment
-    }
+      content: editor.value.getText(),
+      htmlContent: editor.value.getHTML()
+    };
 
+    let response;
     if (articleId.value) {
-      await updateArticle(articleData)
+      response = await updateArticle(articleData, userId);
     } else {
-      const response = await createArticle(articleData)
-      articleId.value = response.id
+      response = await createArticle(articleData, userId);
     }
 
-    publishDialogVisible.value = false
-    ElMessage.success('文章发布成功')
-    router.push(`/article/${articleId.value}`)
+    if (!articleId.value) {
+      articleId.value = response.result.id;
+      router.replace(`/editor/${response.result.id}`);
+    }
+
+    ElMessage.success('草稿保存成功');
+    return response.result;
   } catch (error) {
-    console.error('发布失败:', error)
-    ElMessage.error('文章发布失败')
+    console.error('保存草稿失败:', error);
+    ElMessage.error(error.message || '保存失败');
+    throw error;
   } finally {
-    isPublishing.value = false
+    isSaving.value = false;
   }
-}
-
-// API 方法
-const createArticle = async (articleData) => {
-  const response = await fetch('/api/articles', {
-    method: 'POST',
-    headers: {
-      'Content-Type': 'application/json',
-      'Authorization': `Bearer ${localStorage.getItem('token')}`
-    },
-    body: JSON.stringify(articleData)
-  })
-
-  if (!response.ok) throw new Error('创建文章失败')
-  return response.json()
-}
-
-const updateArticle = async (articleData) => {
-  const response = await fetch(`/api/articles/${articleId.value}`, {
-    method: 'PUT',
-    headers: {
-      'Content-Type': 'application/json',
-      'Authorization': `Bearer ${localStorage.getItem('token')}`
-    },
-    body: JSON.stringify(articleData)
-  })
-
-  if (!response.ok) throw new Error('更新文章失败')
-  return response.json()
-}
-
-const loadArticle = async () => {
-  try {
-    const response = await fetch(`/api/articles/${articleId.value}`, {
-      headers: {
-        'Authorization': `Bearer ${localStorage.getItem('token')}`
-      }
-    })
-
-    if (!response.ok) throw new Error('加载文章失败')
-
-    const article = await response.json()
-
-    // 更新表单数据
-    articleForm.title = article.title
-    articleForm.content = article.content
-    articleForm.categoryId = article.categoryId
-    articleForm.tags = article.tags
-    articleForm.coverImage = article.coverImage
-
-    // 更新编辑器内容
-    editor.value.commands.setContent(article.htmlContent)
-  } catch (error) {
-    console.error('加载文章失败:', error)
-    ElMessage.error('加载文章失败')
-  }
-}
+};
 
 // 离开页面提示
 const handleBeforeUnload = (e) => {
@@ -998,7 +1107,6 @@ const previewArticle = () => {
   color: #909399;
 }
 
-/* 深度选择器处理 Element Plus 组件样式 */
 :deep(.el-dialog__body) {
   padding: 20px;
 }

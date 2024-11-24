@@ -2,10 +2,12 @@
 import Footer from './components/Footer.vue';
 import { RouterView } from 'vue-router';
 import Header from '@/components/header.vue'
-import { ref, provide, watch,computed } from 'vue';
+import { ref, provide, watch,computed,onMounted} from 'vue';
 import {useRoute} from "vue-router";
 import { useStore } from 'vuex';
 import DraggableBubble from "@/components/DraggableBubble.vue";
+import { defineComponent } from 'vue'
+import { ElConfigProvider } from 'element-plus'
 
 
 export default {
@@ -15,10 +17,13 @@ export default {
     Footer,
     RouterView,
     Header,
+    ElConfigProvider
   },
   setup() {
     const store = useStore();
     const route = useRoute();
+    const zIndex = 3000
+    const size = 'default'
 
     // 计算是否显示气泡
     const showBubble = computed(() => {
@@ -35,6 +40,15 @@ export default {
     provide('isLoggedIn', isLoggedIn);
 
     const isAuthPage = ref(route.path === '/login' || route.path === '/register');
+
+    // 初始化时恢复用户信息到store
+    onMounted(() => {
+      const storedUser = JSON.parse(localStorage.getItem("user"));
+      if (storedUser && !store.state.user) {
+        console.log('Restoring user from localStorage:', storedUser);
+        store.commit('setUser', storedUser);
+      }
+    })
 
     // 监听路由路径的变化，更新 isAuthPage 的值
     watch(
@@ -55,7 +69,9 @@ export default {
     return {
       isLoggedIn,
       isAuthPage,
-      showBubble
+      showBubble,
+      zIndex,
+      size
     };
   },
 };

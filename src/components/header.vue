@@ -94,7 +94,8 @@ const handleAvatarError = (e) => {
 onMounted(async () => {
   if (isLoggedIn.value) {
     try {
-      await store.dispatch('getUserInfo'); // 确保在 Vuex 中实现此 action
+      console.log('头像：',userAvatar.value);
+//await store.dispatch('getUserInfo'); // 确保在 Vuex 中实现此 action
     } catch (error) {
       console.error('Failed to fetch user info:', error);
     }
