@@ -250,7 +250,7 @@ const handleReplyClick = (parentComment, replyComment = null) => {
     replyPlaceholder.value = `回复 @${replyComment.user.username}`
     inputContent.value = `@${replyComment.user.username} `
   } else {
-    replyToUser.value = null
+    replyToUser.value = parentComment.user
     replyPlaceholder.value = '写下你的回复...'
   }
 }
@@ -438,6 +438,7 @@ const handleSubmitComment = async () => {
 }
 
 // 提交回复
+
 const handleSubmitReply = async () => {
   if (!store.state.user) {
     ElMessage.warning('请先登录')
@@ -453,8 +454,11 @@ const handleSubmitReply = async () => {
     const userId = store.state.user.id
     const requestBody = {
       content: inputContent.value,
-      parentId: activeComment.value.id
+      parentId: activeComment.value.id,
+      replyToUserId: replyToUser.value?.id // 添加回复对象的用户ID
     }
+
+    console.log('Submitting reply with data:', requestBody)
 
     const response = await fetch(
         `http://localhost:8088/api/articles/${userId}/${articleId}/comments`,
