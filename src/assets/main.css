@@ -1,8 +1,18 @@
 @import './base.css';
-
+html, body {
+  margin: 0;
+  padding: 0;
+  height: 100vh; /* 使用视口高度 */
+  width: 100%;
+  overflow-x: hidden;
+}
 #app {
-  max-width: 1280px;
+  min-height: 100vh;  /* 使用视口高度 */
+  width: 100%;        /* 确保宽度100% */
+  margin: 0 auto;     /* 居中 */
   font-weight: normal;
+  display: flex;      /* 使用 flex 布局 */
+  flex-direction: column; /* 垂直方向排列 */
 }
 
 a,

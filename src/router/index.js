@@ -1,4 +1,5 @@
 import { createRouter, createWebHistory } from 'vue-router'
+import ArticleDetail from "@/views/forum/ArticleDetail.vue";
 
 const routes = [
     {
@@ -107,6 +108,12 @@ const routes = [
                 component: () => import('../views/health/detail/Height.vue')
             }
         ]
+    },
+    {
+        path: '/article/detail/:id',
+        name: 'ArticleDetail',
+        component: () => import('../views/forum/ArticleDetail.vue'),
+        props: true
     }
 ]
 
