@@ -1,5 +1,5 @@
 <template>
-  <div class="article-container">
+  <div class="article-container" ref="container">
     <div class="back-button">
       <el-button
           type="primary"
@@ -77,82 +77,63 @@
           </el-button>
         </div>
       </el-card>
+    </div>
 
-      <!-- 评论区 -->
-      <el-card class="comment-section">
-        <template #header>
-          <div class="comment-header">
-            <h3>评论 {{ article.commentCount }}</h3>
-          </div>
-        </template>
+    <!-- 悬浮评论按钮 -->
+    <div class="float-comment-btn" @click="showCommentDrawer = true">
+      <el-badge :value="article.commentCount" :max="99">
+        <el-button type="primary" circle>
+          <el-icon><MessageSquare /></el-icon>
+        </el-button>
+      </el-badge>
+    </div>
 
-        <!-- 评论输入框 -->
-        <div class="comment-input">
-          <el-input
-              v-model="commentContent"
-              type="textarea"
-              :rows="3"
-              placeholder="写下你的评论..."
-              class="custom-input"
-          />
-          <el-button
-              type="primary"
-              class="submit-comment-btn"
-              :disabled="!commentContent.trim()"
-              @click="submitComment"
-          >
-            发表评论
+    <!-- 右侧评论抽屉 -->
+    <el-drawer
+        v-model="showCommentDrawer"
+        direction="rtl"
+        size="35%"
+        :with-header="false"
+        custom-class="comment-drawer"
+        destroy-on-close
+    >
+      <div class="drawer-container">
+        <!-- 评论抽屉头部 -->
+        <div class="drawer-header">
+          <h3>评论 {{ article.commentCount }}</h3>
+          <el-button type="text" @click="showCommentDrawer = false">
+            <el-icon><Delete /></el-icon>
           </el-button>
         </div>
 
-        <!-- 评论列表 -->
-        <div class="comment-list">
-          <div v-for="comment in comments" :key="comment.id" class="comment-item">
-            <el-avatar :size="40" :src="comment.user.avatar" class="comment-avatar" />
-            <div class="comment-content">
-              <div class="comment-info">
-                <span class="username">{{ comment.user.username }}</span>
-                <span class="time">{{ formatDate(comment.createdAt) }}</span>
-              </div>
-              <div class="text">{{ comment.content }}</div>
-              <div class="comment-actions">
-                <span class="reply-btn" @click="handleReplyClick(comment)">回复</span>
-              </div>
-
-              <!-- 回复输入框 -->
-              <div v-if="activeReplyId === comment.id" class="reply-input-container">
-                <el-input
-                    v-model="replyContent"
-                    type="textarea"
-                    :rows="2"
-                    :placeholder="replyPlaceholder"
-                    class="reply-input"
-                />
-                <div class="reply-actions">
-                  <el-button type="text" @click="cancelReply">取消</el-button>
-                  <el-button
-                      type="primary"
-                      size="small"
-                      :disabled="!replyContent.trim()"
-                      @click="submitReply"
-                  >
-                  回复
-                  </el-button>
+        <!-- 评论列表区域 -->
+        <div class="drawer-content">
+          <div class="comment-list">
+            <div v-for="comment in comments" :key="comment.id" class="comment-item">
+              <el-avatar :size="40" :src="comment.user.avatar" class="comment-avatar" />
+              <div class="comment-content">
+                <div class="comment-info">
+                  <span class="username">{{ comment.user.username }}</span>
+                  <span class="time">{{ formatDate(comment.createdAt) }}</span>
                 </div>
-              </div>
+                <div class="text">{{ comment.content }}</div>
+                <div class="comment-actions">
+                  <span class="reply-btn" @click="handleReplyClick(comment)">回复</span>
+                </div>
 
-              <!-- 显示回复列表 -->
-              <div v-if="comment.replies && comment.replies.length > 0" class="replies-container">
-                <div v-for="reply in comment.replies" :key="reply.id" class="reply-item">
-                  <el-avatar :size="32" :src="reply.user.avatar" class="reply-avatar" />
-                  <div class="reply-content">
-                    <div class="reply-info">
-                      <span class="username">{{ reply.user.username }}</span>
-                      <span class="time">{{ formatDate(reply.createdAt) }}</span>
-                    </div>
-                    <div class="text">{{ reply.content }}</div>
-                    <div class="comment-actions">
-                      <span class="reply-btn" @click="handleReplyClick(comment, reply)">回复</span>
+                <!-- 回复列表 -->
+                <div v-if="comment.replies && comment.replies.length > 0" class="replies-container">
+                  <div v-for="reply in comment.replies" :key="reply.id" class="reply-item">
+                    <el-avatar :size="32" :src="reply.user.avatar" class="reply-avatar" />
+                    <div class="reply-content">
+                      <div class="reply-info">
+                        <span class="username">{{ reply.user.username }}</span>
+                        <span class="time">{{ formatDate(reply.createdAt) }}</span>
+                      </div>
+                      <div class="text">{{ reply.content }}</div>
+                      <div class="comment-actions">
+                        <span class="reply-btn" @click="handleReplyClick(comment, reply)">回复</span>
+                      </div>
                     </div>
                   </div>
                 </div>
@@ -160,31 +141,64 @@
             </div>
           </div>
         </div>
-      </el-card>
-    </div>
+
+        <!-- 底部评论输入框 -->
+        <div class="drawer-footer">
+          <div class="comment-input-container">
+            <div class="input-header" v-if="activeComment">
+              <span>回复 {{ replyToUser ? `@${replyToUser.username}` : '评论' }}</span>
+              <el-button type="text" @click="cancelReply">
+                <el-icon><Delete /></el-icon>
+              </el-button>
+            </div>
+            <el-input
+                v-model="inputContent"
+                type="textarea"
+                :rows="3"
+                :placeholder="activeComment ? replyPlaceholder : '写下你的评论...'"
+                resize="none"
+                class="comment-input"
+            />
+            <div class="input-footer">
+              <el-button
+                  type="primary"
+                  :disabled="!inputContent.trim()"
+                  @click="activeComment ? handleSubmitReply() : handleSubmitComment()"
+              >
+                {{ activeComment ? '发表回复' : '发表评论' }}
+              </el-button>
+            </div>
+          </div>
+        </div>
+      </div>
+    </el-drawer>
   </div>
 </template>
 
 <script setup>
 import { ref, onMounted } from 'vue'
-import {useRoute, useRouter} from 'vue-router'
+import { useRoute, useRouter } from 'vue-router'
 import { ElMessage } from 'element-plus'
 import dayjs from 'dayjs'
 import { useStore } from 'vuex'
-import {Star, Calendar, Folder, View, ThumbsUp, Bookmark } from 'lucide-vue-next'
+import {
+  Star, Calendar, Folder, View, ThumbsUp,
+  Bookmark, Delete, MessageSquare
+} from 'lucide-vue-next'
 
 const route = useRoute()
 const router = useRouter()
 const store = useStore()
 const articleId = route.params.id
 
+// 评论抽屉控制
+const showCommentDrawer = ref(false)
+
 const comments = ref([])
-const commentContent = ref('')
-const activeReplyId = ref(null)
-const replyContent = ref('')
+const inputContent = ref('')
+const activeComment = ref(null)
 const replyPlaceholder = ref('写下你的回复...')
 const replyToUser = ref(null)
-const activeComment = ref(null)
 
 const article = ref({
   id: null,
@@ -218,9 +232,9 @@ const getCategoryName = (categoryId) => {
     2: '生活分享',
     3: '问题解答',
     4: '经验交流'
-  };
-  return categoryMap[categoryId] || '未知分类';
-};
+  }
+  return categoryMap[categoryId] || '未知分类'
+}
 
 const handleReplyClick = (parentComment, replyComment = null) => {
   if (!store.state.user) {
@@ -228,29 +242,24 @@ const handleReplyClick = (parentComment, replyComment = null) => {
     return
   }
 
-  activeComment.value = parentComment // 存储当前正在回复的评论
-  activeReplyId.value = parentComment.id
-  replyContent.value = ''
+  activeComment.value = parentComment
+  inputContent.value = ''
 
   if (replyComment) {
-    // 如果是回复子评论，设置要回复的用户信息
     replyToUser.value = replyComment.user
     replyPlaceholder.value = `回复 @${replyComment.user.username}`
-    // 预填充@用户名
-    replyContent.value = `@${replyComment.user.username} `
+    inputContent.value = `@${replyComment.user.username} `
   } else {
     replyToUser.value = null
     replyPlaceholder.value = '写下你的回复...'
   }
 }
 
-
 const cancelReply = () => {
-  activeReplyId.value = null
-  replyContent.value = ''
+  activeComment.value = null
   replyToUser.value = null
   replyPlaceholder.value = '写下你的回复...'
-  activeComment.value = null // 清除当前活动评论
+  inputContent.value = ''
 }
 
 // 获取文章详情
@@ -260,20 +269,18 @@ const fetchArticle = async () => {
     const response = await fetch(`http://localhost:8088/api/articles/${userId}/${articleId}`)
     if (!response.ok) throw new Error('获取文章失败')
 
-    // 先获取完整的响应数据
     const data = await response.json()
-    console.log('完整响应数据:', data)  // 查看完整的响应数据结构
+    console.log('完整响应数据:', data)
 
     if (data.code !== 200) {
       throw new Error(data.msg || '获取文章失败')
     }
 
-    // 检查数据结构
-    if (data.data) {  // 注意这里改成了 data.data
+    if (data.data) {
       article.value = {
-        ...article.value,  // 保持默认值
-        ...data.data,      // 合并服务器数据
-        id: articleId      // 确保使用路由参数中的ID
+        ...article.value,
+        ...data.data,
+        id: articleId
       }
       console.log('更新后的文章数据:', article.value)
       await incrementViewCount()
@@ -289,7 +296,7 @@ const fetchArticle = async () => {
 // 增加阅读量
 const incrementViewCount = async () => {
   try {
-    const userId = store.state.user.id || 0
+    const userId = store.state.user?.id || 0
     await fetch(`http://localhost:8088/api/articles/${userId}/${articleId}/view`, {
       method: 'POST'
     })
@@ -320,7 +327,6 @@ const handleLike = async () => {
 
     const data = await response.json()
     if (data.code === 200 && data.data) {
-      // 使用后端返回的最新文章数据更新
       article.value = {
         ...article.value,
         ...data.data
@@ -361,7 +367,8 @@ const handleFavorite = async () => {
     ElMessage.error(error.message)
   }
 }
-// 获取评论列表函数
+
+// 获取评论列表
 const fetchComments = async () => {
   try {
     const userId = store.state.user?.id || 0
@@ -373,7 +380,6 @@ const fetchComments = async () => {
     }
     const data = await response.json()
     if (data.code === 200 && data.data) {
-      // 评论数据已经是树形结构，直接使用
       comments.value = data.data.comments
     }
   } catch (error) {
@@ -381,8 +387,58 @@ const fetchComments = async () => {
   }
 }
 
-// 修改回复提交逻辑
-const submitReply = async () => {
+// 提交评论
+const handleSubmitComment = async () => {
+  if (!store.state.user) {
+    ElMessage.warning('请先登录')
+    return
+  }
+
+  try {
+    const userId = store.state.user.id
+    const response = await fetch(
+        `http://localhost:8088/api/articles/${userId}/${articleId}/comments`,
+        {
+          method: 'POST',
+          headers: {
+            'Content-Type': 'application/json',
+            'Authorization': `Bearer ${localStorage.getItem('token')}`
+          },
+          body: JSON.stringify({ content: inputContent.value })
+        }
+    )
+
+    if (!response.ok) {
+      throw new Error('评论失败')
+    }
+
+    const data = await response.json()
+    if (data.code === 200 && data.data) {
+      const newComment = {
+        id: data.data.id,
+        content: data.data.content,
+        createdAt: data.data.createdAt,
+        user: {
+          id: store.state.user.id,
+          username: store.state.user.username,
+          avatar: store.state.user.avatar
+        },
+        replies: []
+      }
+      comments.value.unshift(newComment)
+      article.value.commentCount++
+      inputContent.value = ''
+      ElMessage.success('评论成功')
+    } else {
+      throw new Error(data.msg || '评论失败')
+    }
+  } catch (error) {
+    ElMessage.error(error.message)
+  }
+}
+
+// 提交回复
+const handleSubmitReply = async () => {
   if (!store.state.user) {
     ElMessage.warning('请先登录')
     return
@@ -395,13 +451,10 @@ const submitReply = async () => {
 
   try {
     const userId = store.state.user.id
-    // 构建请求体，确保包含 parentId
     const requestBody = {
-      content: replyContent.value,
-      parentId: activeComment.value.id  // 使用存储的评论ID作为parentId
+      content: inputContent.value,
+      parentId: activeComment.value.id
     }
-
-    console.log('Submitting reply with data:', requestBody) // 调试日志
 
     const response = await fetch(
         `http://localhost:8088/api/articles/${userId}/${articleId}/comments`,
@@ -421,8 +474,6 @@ const submitReply = async () => {
 
     const data = await response.json()
     if (data.code === 200 && data.data) {
-      console.log('Reply success response:', data.data) // 调试日志
-
       const newReply = {
         ...data.data,
         user: {
@@ -432,21 +483,14 @@ const submitReply = async () => {
         }
       }
 
-      // 确保父评论有 replies 数组
       if (!activeComment.value.replies) {
         activeComment.value.replies = []
       }
 
-      // 添加新回复到父评论的 replies 数组
       activeComment.value.replies.push(newReply)
-
-      // 更新评论总数
       article.value.commentCount++
-
-      // 清空回复内容并重置状态
+      inputContent.value = ''
       cancelReply()
-      activeComment.value = null // 重置当前活动评论
-
       ElMessage.success('回复成功')
     } else {
       throw new Error(data.msg || '回复失败')
@@ -456,57 +500,6 @@ const submitReply = async () => {
     ElMessage.error(error.message)
   }
 }
-
-// 提交评论
-const submitComment = async () => {
-  if (!store.state.user) {
-    ElMessage.warning('请先登录')
-    return
-  }
-
-  try {
-    const userId = store.state.user.id
-    const response = await fetch(
-        `http://localhost:8088/api/articles/${userId}/${articleId}/comments`,
-        {
-          method: 'POST',
-          headers: {
-            'Content-Type': 'application/json',
-            'Authorization': `Bearer ${localStorage.getItem('token')}`
-          },
-          body: JSON.stringify({ content: commentContent.value })
-        }
-    )
-
-    if (!response.ok) {
-      throw new Error('评论失败')
-    }
-
-    const data = await response.json()
-    if (data.code === 200 && data.data) {
-      const newComment = {
-        id: data.data.id,
-        content: data.data.content,
-        createdAt: data.data.createdAt,
-        user: {
-          id: store.state.user.id,
-          username: store.state.user.username,
-          avatar: store.state.user.avatar
-        },
-        replies: [] // 初始化空的回复数组
-      }
-      comments.value.unshift(newComment)
-      article.value.commentCount++
-      commentContent.value = ''
-      ElMessage.success('评论成功')
-    } else {
-      throw new Error(data.msg || '评论失败')
-    }
-  } catch (error) {
-    ElMessage.error(error.message)
-  }
-}
-
 
 // 格式化日期
 const formatDate = (date) => {
@@ -525,53 +518,154 @@ onMounted(() => {
 </script>
 
 <style scoped>
-.article-container {
-  padding: 32px 5%;
-  max-width: 1200px;
-  margin: 0 auto;
-  background-color: #f8f9fa;
-  position: relative;  /* 添加这行 */
-  overflow-y: auto;   /* 添加这行 */
-  height: 100%;       /* 修改这行 */
+/* 悬浮评论按钮样式 */
+.float-comment-btn {
+  position: fixed;
+  right: 40px;
+  bottom: 40px;
+  z-index: 99;
+  transition: all 0.3s ease;
 }
 
-/* 在现有的 style 标签内添加 */
-.comment-actions {
-  margin-top: 8px;
+.float-comment-btn:hover {
+  transform: translateY(-2px);
 }
 
-.reply-btn {
+/* 评论抽屉样式 */
+.comment-drawer {
+  padding: 0 !important;
+  overflow: hidden !important;
+}
+
+.drawer-container {
+  display: flex;
+  flex-direction: column;
+  height: 100%;
+  background-color: #fff;
+}
+
+.drawer-header {
+  padding: 16px 20px;
+  border-bottom: 1px solid #eee;
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  flex-shrink: 0;
+  background-color: #fff;
+}
+
+.drawer-header h3 {
+  margin: 0;
+  font-size: 18px;
+  font-weight: 600;
+  color: #2c3e50;
+}
+
+.drawer-content {
+  flex: 1;
+  overflow-y: auto;
+  padding: 20px;
+}
+
+.drawer-footer {
+  border-top: 1px solid #eee;
+  padding: 16px 20px;
+  background: #fff;
+  flex-shrink: 0;
+}
+
+.comment-input-container {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+
+.input-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
   color: #666;
-  font-size: 13px;
-  cursor: pointer;
-  margin-right: 16px;
-  transition: color 0.2s ease;
+  font-size: 14px;
 }
 
-.reply-btn:hover {
-  color: #409eff;
+.comment-input {
+  margin-bottom: 8px;
 }
 
-.reply-input-container {
-  margin: 12px 0;
-  padding: 12px;
-  background-color: #f9fafb;
-  border-radius: 8px;
-}
-
-.reply-input {
-  margin-bottom: 12px;
-}
-
-.reply-actions {
+.input-footer {
   display: flex;
   justify-content: flex-end;
   gap: 12px;
 }
 
+/* 评论列表样式 */
+.comment-list {
+  display: flex;
+  flex-direction: column;
+  gap: 16px;
+}
+
+.comment-item {
+  display: flex;
+  gap: 12px;
+  background-color: #f8f9fa;
+  border-radius: 8px;
+  padding: 16px;
+}
+
+.comment-avatar {
+  flex-shrink: 0;
+}
+
+.comment-content {
+  flex: 1;
+  min-width: 0;
+}
+
+.comment-info {
+  display: flex;
+  align-items: center;
+  margin-bottom: 8px;
+  gap: 8px;
+}
+
+.username {
+  font-weight: 600;
+  color: #2c3e50;
+}
+
+.time {
+  color: #64748b;
+  font-size: 13px;
+}
+
+.text {
+  color: #4b5563;
+  line-height: 1.6;
+  font-size: 14px;
+  margin-bottom: 8px;
+  word-wrap: break-word;
+}
+
+.comment-actions {
+  margin-top: 8px;
+}
+
+.reply-btn {
+  color: #409eff;
+  font-size: 13px;
+  cursor: pointer;
+  transition: color 0.2s ease;
+}
+
+.reply-btn:hover {
+  color: #66b1ff;
+}
+
+/* 回复列表样式 */
 .replies-container {
-  margin-top: 16px;
-  padding-top: 8px;
+  margin-top: 12px;
+  padding-top: 12px;
   border-top: 1px solid #eee;
 }
 
@@ -588,30 +682,23 @@ onMounted(() => {
 
 .reply-content {
   flex: 1;
+  min-width: 0;
 }
 
 .reply-info {
   display: flex;
   align-items: center;
   margin-bottom: 4px;
+  gap: 8px;
 }
 
-.reply-avatar {
-  flex-shrink: 0;
-}
-
-.text {
-  color: #4b5563;
-  line-height: 1.6;
-  font-size: 15px;
-  word-break: break-word;
-}
-
-/* 新增样式用于突出显示@用户名 */
-.text a {
-  color: #409eff;
-  text-decoration: none;
-  margin-right: 4px;
+/* 文章容器样式 */
+.article-container {
+  padding: 32px 5%;
+  max-width: 1200px;
+  margin: 0 auto;
+  background-color: #f8f9fa;
+  position: relative;
 }
 
 .article-content {
@@ -619,6 +706,7 @@ onMounted(() => {
   overflow-y: visible;
 }
 
+/* 文章相关样式保持不变 */
 .custom-back-btn {
   margin-bottom: 24px;
   padding: 10px 20px;
@@ -636,6 +724,12 @@ onMounted(() => {
   box-shadow: 0 4px 12px rgba(0, 0, 0, 0.05);
   background: #ffffff;
   margin-bottom: 24px;
+}
+
+.text a {
+  color: #409eff;
+  text-decoration: none;
+  margin-right: 4px;
 }
 
 .article-header {
@@ -829,8 +923,30 @@ onMounted(() => {
   font-size: 15px;
 }
 
+/* 适配移动端 */
 @media (max-width: 768px) {
+  .el-drawer {
+    width: 85% !important;
+  }
+
+  .float-comment-btn {
+    right: 20px;
+    bottom: 20px;
+  }
+
   .article-container {
+    padding: 16px;
+  }
+
+  .comment-item, .reply-item {
+    padding: 12px;
+  }
+
+  .drawer-header, .drawer-footer {
+    padding: 12px 16px;
+  }
+
+  .drawer-content {
     padding: 16px;
   }
 
