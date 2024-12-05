@@ -52,26 +52,17 @@
           </div>
 
           <!-- 操作栏 -->
-          <div class="actions">
-            <el-button
-                type="primary"
-                class="action-btn like-btn"
-                :class="{ active: article.isLiked }"
-                @click="handleLike"
-            >
-              <el-icon><ThumbsUp /></el-icon>
-              {{ article.likeCount }} 点赞
-            </el-button>
-            <el-button
-                type="success"
-                class="action-btn favorite-btn"
-                :class="{ active: article.isFavorited }"
-                @click="handleFavorite"
-            >
-              <el-icon><Bookmark /></el-icon>
-              {{ article.isFavorited ? '已收藏' : '收藏' }}
-            </el-button>
-          </div>
+          <ArticleInteractionBar
+              :isLiked="article.isLiked"
+              :isFavorited="article.isFavorited"
+              :likeCount="article.likeCount"
+              :favoriteCount="article.favoriteCount"
+              :commentCount="article.commentCount"
+              @like="handleLike"
+              @favorite="handleFavorite"
+              @comment="showCommentDrawer = true"
+              @share="handleShare"
+          />
         </el-card>
       </div>
 
@@ -173,6 +164,7 @@
 </template>
 
 <script setup>
+import ArticleInteractionBar from '@/components/ArticleInteractionBar.vue'
 import { ref, onMounted } from 'vue'
 import { useRoute, useRouter } from 'vue-router'
 import { ElMessage } from 'element-plus'
@@ -232,6 +224,15 @@ const getCategoryName = (categoryId) => {
     4: '经验交流'
   }
   return categoryMap[categoryId] || '未知分类'
+}
+
+const handleShare = async () => {
+  try {
+    await navigator.clipboard.writeText(window.location.href)
+    ElMessage.success('链接已复制到剪贴板')
+  } catch (error) {
+    ElMessage.error('复制链接失败')
+  }
 }
 
 const handleReplyClick = (parentComment, replyComment = null) => {
@@ -359,13 +360,23 @@ const handleFavorite = async () => {
 
     if (!response.ok) throw new Error('操作失败')
 
-    article.value.isFavorited = !article.value.isFavorited
-    ElMessage.success(article.value.isFavorited ? '收藏成功' : '已取消收藏')
+    const data = await response.json()
+    if (data.code === 200) {
+      article.value.isFavorited = !article.value.isFavorited
+      // 更新收藏数
+      if (article.value.isFavorited) {
+        article.value.favoriteCount = (article.value.favoriteCount || 0) + 1
+      } else {
+        article.value.favoriteCount = Math.max((article.value.favoriteCount || 0) - 1, 0)
+      }
+      ElMessage.success(article.value.isFavorited ? '收藏成功' : '已取消收藏')
+    } else {
+      throw new Error(data.msg || '操作失败')
+    }
   } catch (error) {
     ElMessage.error(error.message)
   }
 }
-
 // 获取评论列表
 const fetchComments = async () => {
   try {
