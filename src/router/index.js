@@ -114,6 +114,11 @@ const routes = [
         name: 'ArticleDetail',
         component: () => import('../views/forum/ArticleDetail.vue'),
         props: true
+    },
+    {
+        path: '/my-articles',
+        name: 'MyArticles',
+        component:()=>import ('../views/MyArticles.vue'),
     }
 ]
 

@@ -116,15 +116,15 @@ const authItems = [
 const userMenuItems = [
   {
     index: '3-1',
-    label: '个人资料',
+    label: '我的文章',
     icon: '/src/assets/images/icon/file.png',
-    action: () => router.push({ name: 'EditInformation' })
+    action: () => router.push({ name: 'MyArticles' })
   },
   {
     index: '3-2',
-    label: '设置',
-    icon: '/src/assets/images/icon/set.png',
-    action: () => router.push({ name: 'Setting' })
+    label: '个人中心',
+    icon: '/src/assets/images/icon/person.png',
+    action: () => router.push({ name: 'EditInformation' })
   },
   {
     index: '3-3',

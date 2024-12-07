@@ -271,7 +271,7 @@
 </template>
 
 <script setup>
-import { ref, reactive, onMounted, onBeforeUnmount,nextTick } from 'vue'
+import { ref, reactive, onMounted, onBeforeUnmount,nextTick ,watch} from 'vue'
 import { useRoute, useRouter } from 'vue-router'
 import {useStore} from 'vuex'
 import { debounce } from 'lodash'
@@ -402,6 +402,7 @@ onMounted(() => {
         ],
         content: '',
         onUpdate: ({ editor }) => {
+          onEditorUpdate();
           articleForm.content = editor.getText();
           articleForm.htmlContent = editor.getHTML();
           Promise.resolve().then(() => autoSave());
@@ -615,11 +616,14 @@ const autoSave = debounce(async () => {
   if (!articleForm.title?.trim()) return;
 
   try {
+    // 更改保存状态
     isSaving.value = true;
     saveStatus.value = '正在保存...';
 
     const userId = store.state.user.id;
-    console.log('用户ID：',userId);
+    if (!userId) {
+      throw new Error('请先登录');
+    }
 
     // 构造请求数据
     const articleData = {
@@ -642,20 +646,40 @@ const autoSave = debounce(async () => {
       response = await createArticle(articleData, userId);
     }
 
-    if (!articleId.value && response.result?.id) {
-      articleId.value = response.result.id;
-      router.replace(`/editor/${response.result.id}`);
+    // 检查响应状态
+    if (response.code !== 200) {
+      throw new Error(response.message || '保存失败');
     }
 
-    saveStatus.value = '所有更改已保存';
+    if (!articleId.value && response.result?.id) {
+      articleId.value = response.result.id;
+      await router.replace(`/editor/${response.result.id}`);
+    }
+
+    // 保存成功
+    saveStatus.value = '已保存 ' + new Date().toLocaleTimeString();
+    setTimeout(() => {
+      saveStatus.value = '所有更改已保存';
+    }, 3000);
+
   } catch (error) {
     console.error('自动保存失败:', error);
-    saveStatus.value = '保存失败';
+    saveStatus.value = '保存失败 ' + error.message;
     ElMessage.error(error.message || '保存失败');
   } finally {
     isSaving.value = false;
   }
 }, 3000);
+
+// 监听编辑器内容变化
+const onEditorUpdate = () => {
+  if (editor.value) {
+    articleForm.content = editor.value.getText();
+    articleForm.htmlContent = editor.value.getHTML();
+    saveStatus.value = '正在编辑...';
+    autoSave();
+  }
+};
 
 const publishArticle = async () => {
   try {
@@ -668,13 +692,35 @@ const publishArticle = async () => {
       throw new Error('请先登录');
     }
 
+    const DELETE_DRAFT_URL = `${BASE_URL}/${userId}/delete-draft`;
+
+    // 构造删除草稿的请求数据
+    const draftData = {
+      title: articleForm.title,
+      content: editor.value.getText(),
+      userId: userId
+    };
+
+    // 删除草稿
+    const deleteResponse = await fetch(DELETE_DRAFT_URL, {
+      method: 'DELETE',
+      headers: {
+        'Content-Type': 'application/json'
+      },
+      credentials: 'include',
+      body: JSON.stringify(draftData)
+    });
+
+    const deleteResult = await deleteResponse.json();
+
+    // 构造发布数据
     const articleData = {
       title: articleForm.title,
       content: editor.value.getText(),
       htmlContent: editor.value.getHTML(),
       coverImage: articleForm.coverImage || '',
       categoryId: articleForm.categoryId,
-      status: 1,
+      status: 1, // 发布状态
       visibility: publishForm.visibility,
       allowComment: publishForm.allowComment,
       publishTime: publishForm.timeType === 'schedule' ?
@@ -683,32 +729,23 @@ const publishArticle = async () => {
       tags: Array.from(articleForm.tags || [])
     };
 
-    console.log(articleData);
-
     let response;
     if (articleId.value) {
       response = await updateArticle(articleData, userId);
-      console.log('1:',response);
-      if (response.code === 200) {
-        ElMessage.success('文章更新成功');
-        publishDialogVisible.value = false;
-        await router.push(`/article/${articleId.value}`);
-      } else {
-        throw new Error(response.message || '更新失败');
-      }
     } else {
       response = await createArticle(articleData, userId);
-      console.log('2:',response);
-      if (response.code === 200) {
-        ElMessage.success('文章发布成功');
-        publishDialogVisible.value = false;
-        await router.push(`/article/${response.data.id}`);
+    }
+
+    if (response.code === 200) {
+      ElMessage.success('文章发布成功');
+      publishDialogVisible.value = false;
+      if (articleId.value) {
+        await router.push(`/article/${articleId.value}`);
       } else {
-        throw new Error(response.message || '发布失败');
+        await router.push('/forum');
       }
     }
   } catch (error) {
-    console.error('发布失败:', error);
     ElMessage.error(error.message || '文章发布失败');
   } finally {
     isPublishing.value = false;
@@ -946,13 +983,19 @@ const saveDraft = async () => {
       response = await createArticle(articleData, userId);
     }
 
-    if (!articleId.value) {
-      articleId.value = response.result.id;
-      router.replace(`/editor/${response.result.id}`);
+    // 检查响应数据结构
+    if (response && response.code === 200 && response.data) {
+      const savedArticle = response.data;
+      if (savedArticle.id) {
+        articleId.value = savedArticle.id;
+        router.replace(`/forum`);
+        ElMessage.success('草稿保存成功');
+        return savedArticle;
+      }
     }
 
-    ElMessage.success('草稿保存成功');
-    return response.result;
+    throw new Error('保存草稿失败：服务器响应异常');
+
   } catch (error) {
     console.error('保存草稿失败:', error);
     ElMessage.error(error.message || '保存失败');
@@ -992,6 +1035,13 @@ const goBack = () => {
 const previewArticle = () => {
   window.open(`/article/${articleId.value}/preview`, '_blank')
 }
+
+watch(() => articleForm.title, () => {
+  if (articleForm.title?.trim()) {
+    saveStatus.value = '正在编辑...';
+    autoSave();
+  }
+});
 </script>
 
 <style scoped>

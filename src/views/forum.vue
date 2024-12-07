@@ -15,14 +15,26 @@
         </el-button>
       </div>
 
-      <!-- 主要内容区域 -->
       <div class="forum-content">
-        <!-- 左侧分类列表 -->
+        <!-- 左侧分类 -->
         <div class="forum-categories">
-          <div class="category-title">板块分类</div>
+          <div class="category-title">热点内容</div>
+          <!-- 只保留热榜选项 -->
+          <el-menu
+              :default-active="activeTab"
+              @select="handleTabSelect"
+          >
+            <el-menu-item index="hot">
+              <el-icon><List /></el-icon>
+              <span>热榜</span>
+            </el-menu-item>
+          </el-menu>
+
+          <div class="category-title mt-6">板块分类</div>
           <el-menu
               :default-active="activeCategory.toString()"
-              @select="handleCategorySelect">
+              @select="handleCategorySelect"
+          >
             <el-menu-item
                 v-for="category in categories"
                 :key="category.id"
@@ -32,104 +44,126 @@
               <span>{{ category.name }}</span>
             </el-menu-item>
           </el-menu>
+
+          <!-- 推荐文章组件 -->
+          <RecommendedArticles class="recommended-section" />
         </div>
 
         <!-- 右侧文章列表 -->
-        <div class="posts-list" ref="postsListRef" @scroll="handleScroll">
-          <!-- 瀑布流容器 -->
-          <div class="posts-masonry">
-            <el-empty v-if="posts.length === 0 && !isLoading" description="暂无文章" />
+        <div class="posts-section">
+          <!-- 热榜组件 -->
+          <div v-if="activeTab === 'hot'" class="hot-ranking-section">
+            <HotRanking
+                :articles="hotArticles"
+                :loading="isLoadingHot"
+                :error="hotArticlesError"
+            />
+          </div>
 
-            <div v-for="post in posts"
-                 :key="post.id"
-                 class="post-item">
-              <el-card class="post-card" @click="viewPost(post.id)">
-                <!-- 文章头部信息 -->
-                <div class="post-header">
-                  <el-avatar :size="40" :src="post.author?.avatar" />
-                  <div class="post-info">
-                    <div class="post-title">{{ post.title }}</div>
-                    <div class="post-meta">
-                      <span>{{ post.author?.username }}</span>
-                      <span>{{ formatDate(post.createdAt) }}</span>
-                      <span>{{ getCategoryName(post.categoryId) }}</span>
-                      <span v-if="post.visibility === 'private'" class="private-tag">
-                        <el-icon><Lock /></el-icon>私密
-                      </span>
+          <!-- 文章列表 -->
+          <div v-if="activeTab !== 'hot'" class="posts-list" ref="postsListRef" @scroll="handleScroll">
+            <!-- 瀑布流容器 -->
+            <div class="posts-masonry">
+              <el-empty v-if="posts.length === 0 && !isLoading" description="暂无文章" />
+
+              <div v-for="post in posts" :key="post.id" class="post-item">
+                <el-card
+                    class="post-card"
+                    @click="viewPost(post.id)"
+                    @mouseenter="handlePostHover(post.id)"
+                >
+                  <!-- 文章头部信息 -->
+                  <div class="post-header">
+                    <el-avatar :size="40" :src="post.author?.avatar" />
+                    <div class="post-info">
+                      <div class="post-title">{{ post.title }}</div>
+                      <div class="post-meta">
+                        <span>{{ post.author?.username }}</span>
+                        <span>{{ formatDate(post.createdAt) }}</span>
+                        <span>{{ getCategoryName(post.categoryId) }}</span>
+                        <span v-if="post.visibility === 'private'" class="private-tag">
+                          <el-icon><Lock /></el-icon>私密
+                        </span>
+                      </div>
                     </div>
                   </div>
-                </div>
 
-                <!-- 文章内容 -->
-                <div class="post-content">{{ post.content }}</div>
+                  <!-- 文章内容 -->
+                  <div class="post-content">{{ post.content }}</div>
 
-                <!-- 封面图片 -->
-                <div class="post-cover" v-if="post.coverImage">
-                  <el-image
-                      :src="post.coverImage"
-                      fit="cover"
-                      :preview-src-list="[post.coverImage]"
-                  >
-                    <!-- 图片加载占位符 -->
-                    <template #placeholder>
-                      <div class="image-placeholder">
-                        <el-icon><Picture /></el-icon>
-                      </div>
-                    </template>
-                    <!-- 图片加载错误显示 -->
-                    <template #error>
-                      <div class="image-error">
-                        <el-icon><WarningFilled /></el-icon>
-                        <span>加载失败</span>
-                      </div>
-                    </template>
-                  </el-image>
-                </div>
+                  <!-- 封面图片 -->
+                  <div class="post-cover" v-if="post.coverImage">
+                    <el-image
+                        :src="post.coverImage"
+                        fit="cover"
+                        :preview-src-list="[post.coverImage]"
+                    >
+                      <!-- 图片加载占位符 -->
+                      <template #placeholder>
+                        <div class="image-placeholder">
+                          <el-icon><PictureFilled /></el-icon>
+                        </div>
+                      </template>
+                      <!-- 图片加载错误显示 -->
+                      <template #error>
+                        <div class="image-error">
+                          <el-icon><WarningFilled /></el-icon>
+                          <span>加载失败</span>
+                        </div>
+                      </template>
+                    </el-image>
+                  </div>
 
-                <!-- 文章底部操作栏 -->
-                <div class="post-footer">
-                  <span>
-                    <el-icon><View /></el-icon> {{ post.viewCount }}
-                  </span>
-                  <span>
-                    <el-icon><ChatRound /></el-icon> {{ post.commentCount }}
-                  </span>
-                  <span
-                      @click.stop="handleLike(post)"
-                      :class="{ 'active': post.isLiked }">
-                    <el-icon><Star /></el-icon> {{ post.likeCount }}
-                  </span>
-                  <span
-                      @click.stop="handleFavorite(post)"
-                      :class="{ 'active': post.isFavorited }">
-                    <el-icon><Collection /></el-icon>
-                    {{ post.isFavorited ? '已收藏' : '收藏' }}
-                  </span>
-                </div>
+                  <!-- 文章底部操作栏 -->
+                  <div class="post-footer">
+                    <span>
+                      <el-icon><View /></el-icon> {{ post.viewCount }}
+                    </span>
+                    <span>
+                      <el-icon><ChatDotSquare /></el-icon> {{ post.commentCount }}
+                    </span>
+                    <span
+                        @click.stop="handleLike(post)"
+                        :class="{ 'active': post.isLiked }"
+                    >
+                      <el-icon><Star /></el-icon> {{ post.likeCount }}
+                    </span>
+                    <span
+                        @click.stop="handleFavorite(post)"
+                        :class="{ 'active': post.isFavorited }"
+                    >
+                      <el-icon><Collection /></el-icon>
+                      {{ post.isFavorited ? '已收藏' : '收藏' }}
+                    </span>
+                  </div>
 
-                <!-- 文章标签 -->
-                <div class="post-tags" v-if="post.tags && post.tags.length">
-                  <el-tag
-                      v-for="tag in post.tags"
-                      :key="tag"
-                      size="small"
-                      class="tag-item"
-                  >
-                    {{ tag }}
-                  </el-tag>
-                </div>
-              </el-card>
+                  <!-- 文章标签 -->
+                  <div class="post-tags" v-if="post.tags && post.tags.length">
+                    <el-tag
+                        v-for="tag in post.tags"
+                        :key="tag"
+                        size="small"
+                        class="tag-item"
+                    >
+                      {{ tag }}
+                    </el-tag>
+                  </div>
+                </el-card>
+              </div>
             </div>
-          </div>
 
-          <!-- 加载状态 -->
-          <div v-if="isLoading" class="loading-container">
-            <el-loading />
-          </div>
+            <!-- 加载状态 -->
+            <div class="posts-list"
+                  ref="postsListRef"
+                  @scroll="handleScroll"
+                  v-loading="isLoading"
+            >
+            </div>
 
-          <!-- 加载完成提示 -->
-          <div v-if="noMoreData" class="no-more">
-            没有更多内容了
+            <!-- 加载完成提示 -->
+            <div v-if="noMoreData" class="no-more">
+              没有更多内容了
+            </div>
           </div>
         </div>
       </div>
@@ -139,13 +173,19 @@
 
 <script setup>
 import { ref, onMounted, computed } from 'vue'
+import HotRanking from '@/components/HotRanking.vue'
+import RecommendedArticles from '../components/RecommendedArticles.vue'
+import { useForumStore } from '@/store/forumStore.js'
 import {
   Search,
   Plus,
   ChatDotRound,
   QuestionFilled,
+  WarningFilled,
   Lock,
-  Collection
+  Collection,
+  ChatDotSquare, PictureFilled,
+  List
 } from '@element-plus/icons-vue'
 import { useRouter } from 'vue-router'
 import { ElMessage } from 'element-plus'
@@ -158,10 +198,13 @@ import {
   Eye as View,
   MessageCircle as ChatRound,
   Star,
+  PictureInPicture,
+  WarehouseIcon
 } from 'lucide-vue-next'
 
 const router = useRouter()
 const store = useStore()
+const forumStore = useForumStore()
 const searchText = ref('')
 const activeCategory = ref(0)
 const posts = ref([])
@@ -171,6 +214,32 @@ const pageSize = ref(10)
 const isLoading = ref(false)
 const postsListRef = ref(null)
 const noMoreData = computed(() => posts.value.length >= total.value && total.value > 0)
+const hotArticles = ref([])
+const activeTab = ref('normal')
+const isLoadingHot = ref(false);
+const hotArticlesError = ref('')
+
+const preloadPost = (postId) => {
+  const link = document.createElement('link')
+  link.rel = 'prefetch'
+  link.href = `/api/articles/${postId}`
+  document.head.appendChild(link)
+}
+
+const handleTabSelect = async (tab) => {
+  activeTab.value = tab;
+  if (tab === 'hot') {
+    await fetchHotArticles();
+  } else {
+    // 如果是其他标签，加载普通文章列表
+    resetList();
+    await fetchArticles();
+  }
+};
+
+const handlePostHover = (postId) => {
+  preloadPost(postId)
+}
 
 // 分类数据
 const categories = ref([
@@ -180,6 +249,35 @@ const categories = ref([
   { id: 4, name: '经验交流', icon: 'Medal' }
 ])
 
+const fetchHotArticles = async () => {
+  try {
+    isLoadingHot.value = true;
+    hotArticlesError.value = '';
+
+    const response = await fetch('http://localhost:8088/api/articles/list/hot', {
+      method: 'GET',
+      headers: {
+        'Content-Type': 'application/json',
+        'Authorization': `Bearer ${localStorage.getItem('token')}`
+      }
+    });
+
+    const data = await response.json();
+    if (data.code === 200) {
+      hotArticles.value = data.data || [];
+      console.log('Hot articles:', hotArticles.value);
+    } else {
+      throw new Error(data.message || '获取热门文章失败');
+    }
+  } catch (error) {
+    console.error('获取热门文章失败:', error);
+    hotArticlesError.value = error.message;
+    hotArticles.value = [];
+    ElMessage.error(error.message || '获取热门文章失败');
+  } finally {
+    isLoadingHot.value = false;
+  }
+};
 
 // 获取文章列表
 const fetchArticles = async (loadMore = false) => {
@@ -247,6 +345,7 @@ const resetList = () => {
 
 // 处理分类选择
 const handleCategorySelect = (key) => {
+  activeTab.value = 'normal'; // 切换到普通文章列表状态
   activeCategory.value = parseInt(key);
   resetList();
   fetchArticles();
@@ -357,11 +456,33 @@ const viewPost = (id) => {
 
 // 初始化加载
 onMounted(() => {
-  fetchArticles();
+  // 根据当前的 activeTab 决定加载什么内容
+  if (activeTab.value === 'hot') {
+    fetchHotArticles();
+  } else {
+    fetchArticles();
+  }
 });
 </script>
 
 <style scoped>
+.hot-ranking-section {
+  margin-bottom: 24px;
+  padding: 0 20px;
+}
+
+.forum-categories {
+  width: 240px;
+}
+
+.category-title {
+  padding: 16px;
+  font-size: 16px;
+  font-weight: bold;
+  color: #303133;
+  border-bottom: 1px solid #e6e6e6;
+}
+
 .forum-container {
   padding: 20px 40px;
   height: calc(100vh - 60px);
@@ -565,6 +686,62 @@ onMounted(() => {
   padding: 20px 0;
   font-size: 14px;
 }
+.recommended-section {
+  margin-top: 24px;
+  padding: 16px;
+}
+
+.hot-articles {
+  margin-bottom: 24px;
+  padding: 0 20px;
+}
+
+.posts-section {
+  flex: 1;
+  overflow-y: auto;
+  padding-top: 20px;
+}
+
+/* 调整现有样式 */
+.forum-content {
+  flex: 1;
+  display: flex;
+  overflow: hidden;
+}
+
+.forum-categories {
+  width: 300px;  /* 增加宽度以适应推荐文章 */
+  border-right: 1px solid #e6e6e6;
+  background-color: white;
+  position: sticky;
+  top: 0;
+  height: 100%;
+  overflow-y: auto;
+  display: flex;
+  flex-direction: column;
+}
+
+.hot-articles {
+  margin-bottom: 24px;
+  padding: 0 20px;
+  min-height: 200px; /* 保持固定高度 */
+}
+
+.hot-articles-loading,
+.hot-articles-empty {
+  height: 200px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  background: #f5f7fa;
+  border-radius: 8px;
+}
+
+.el-carousel {
+  border-radius: 8px;
+  overflow: hidden;
+  box-shadow: 0 2px 12px 0 rgba(0,0,0,0.1);
+}
 
 @keyframes fadeInUp {
   from {
@@ -590,6 +767,23 @@ onMounted(() => {
 @media screen and (max-width: 768px) {
   .posts-masonry {
     column-count: 1;
+  }
+
+  .forum-content {
+    flex-direction: column;
+  }
+
+  .forum-categories {
+    width: 100%;
+    margin-bottom: 20px;
+  }
+
+  .recommended-section {
+    margin-top: 16px;
+  }
+
+  .hot-articles {
+    padding: 0 16px;
   }
 }
 
