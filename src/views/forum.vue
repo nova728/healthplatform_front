@@ -44,9 +44,6 @@
               <span>{{ category.name }}</span>
             </el-menu-item>
           </el-menu>
-
-          <!-- 推荐文章组件 -->
-          <RecommendedArticles class="recommended-section" />
         </div>
 
         <!-- 右侧文章列表 -->
@@ -185,7 +182,8 @@ import {
   Lock,
   Collection,
   ChatDotSquare, PictureFilled,
-  List
+  List,
+  Medal
 } from '@element-plus/icons-vue'
 import { useRouter } from 'vue-router'
 import { ElMessage } from 'element-plus'
@@ -194,7 +192,6 @@ import { debounce } from 'lodash'
 import { useStore } from 'vuex'
 import {
   Sun as Sunny,
-  Medal,
   Eye as View,
   MessageCircle as ChatRound,
   Star,
@@ -243,10 +240,10 @@ const handlePostHover = (postId) => {
 
 // 分类数据
 const categories = ref([
-  { id: 1, name: '健康讨论', icon: 'ChatDotRound' },
-  { id: 2, name: '生活分享', icon: 'Sunny' },
-  { id: 3, name: '问题解答', icon: 'QuestionFilled' },
-  { id: 4, name: '经验交流', icon: 'Medal' }
+  { id: 1, name: '健康讨论', icon: ChatDotRound },
+  { id: 2, name: '生活分享', icon: Sunny },
+  { id: 3, name: '问题解答', icon: QuestionFilled },
+  { id: 4, name: '经验交流', icon: Medal }
 ])
 
 const fetchHotArticles = async () => {
@@ -471,10 +468,6 @@ onMounted(() => {
   padding: 0 20px;
 }
 
-.forum-categories {
-  width: 240px;
-}
-
 .category-title {
   padding: 16px;
   font-size: 16px;
@@ -518,16 +511,6 @@ onMounted(() => {
   flex: 1;
   display: flex;
   overflow: hidden;
-}
-
-.forum-categories {
-  width: 200px;
-  border-right: 1px solid #e6e6e6;
-  background-color: white;
-  position: sticky;
-  top: 0;
-  height: 100%;
-  overflow-y: auto;
 }
 
 .category-title {
@@ -710,7 +693,7 @@ onMounted(() => {
 }
 
 .forum-categories {
-  width: 300px;  /* 增加宽度以适应推荐文章 */
+  width: 240px;  /* 增加宽度以适应推荐文章 */
   border-right: 1px solid #e6e6e6;
   background-color: white;
   position: sticky;

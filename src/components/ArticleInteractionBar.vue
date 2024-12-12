@@ -54,7 +54,7 @@ const handleShare = () => emit('share')
           :size="20"
           :class="{ 'fill-current': isFavorited }"
       />
-      <span>{{ favoriteCount || 4 }}</span>
+      <span>{{ favoriteCount || 0 }}</span>
     </button>
 
     <!-- 评论按钮 -->

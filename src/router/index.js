@@ -33,6 +33,12 @@ const routes = [
         component: () => import('../views/forum.vue')
     },
     {
+        path: '/editor/:id?',
+        name: 'EditArticle',
+        component: () => import('../views/forum/ArticleEditor.vue'),
+        props: true
+    },
+    {
         path: '/article/editor',
         name: 'ArticleEditor',
         component: () => import('../views/forum/ArticleEditor.vue')

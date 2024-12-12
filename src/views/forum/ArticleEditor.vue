@@ -640,24 +640,45 @@ const autoSave = debounce(async () => {
     };
 
     let response;
+    // 如果已有文章ID，则更新文章
     if (articleId.value) {
-      response = await updateArticle(articleData, userId);
+      response = await fetch(`${BASE_URL}/${userId}/${articleId.value}`, {
+        method: 'PUT',
+        headers: {
+          'Content-Type': 'application/json'
+        },
+        credentials: 'include',
+        body: JSON.stringify(articleData)
+      });
     } else {
-      response = await createArticle(articleData, userId);
+      // 首次保存，创建新文章
+      response = await fetch(`${BASE_URL}/${userId}`, {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json'
+        },
+        credentials: 'include',
+        body: JSON.stringify(articleData)
+      });
     }
 
-    // 检查响应状态
-    if (response.code !== 200) {
-      throw new Error(response.message || '保存失败');
+    const responseData = await response.json();
+    console.log('Save response:', responseData);
+
+    if (!response.ok) {
+      throw new Error(responseData.message || '保存失败');
     }
 
-    if (!articleId.value && response.result?.id) {
-      articleId.value = response.result.id;
-      await router.replace(`/editor/${response.result.id}`);
+    // 如果是首次保存，设置文章ID并更新路由
+    if (!articleId.value && responseData.data?.id) {
+      articleId.value = responseData.data.id;
+      // 使用 replace 而不是 push，这样不会创建新的历史记录
+      await router.replace(`/editor/${responseData.data.id}`);
     }
 
     // 保存成功
-    saveStatus.value = '已保存 ' + new Date().toLocaleTimeString();
+    const now = new Date().toLocaleTimeString();
+    saveStatus.value = '已保存 ' + now;
     setTimeout(() => {
       saveStatus.value = '所有更改已保存';
     }, 3000);
@@ -869,34 +890,54 @@ const updateArticle = async (articleData, userId) => {
 // 加载文章
 const loadArticle = async () => {
   try {
-    const userId = store.state.user.id
-    if (!userId || !articleId.value) return;
+    const userId = store.state.user.id;
+    if (!userId || !articleId.value) {
+      throw new Error('缺少用户ID或文章ID');
+    }
 
     const response = await fetch(`${BASE_URL}/${userId}/${articleId.value}`, {
       credentials: 'include'
     });
 
-    const data = await response.json();
+    const responseData = await response.json();
+    console.log('Article data:', responseData); // 添加日志以检查返回数据
+
     if (!response.ok) {
-      throw new Error(data.message || '加载文章失败');
+      throw new Error(responseData.message || '加载文章失败');
     }
 
-    // 更新表单数据
-    articleForm.title = data.result.title;
-    articleForm.content = data.result.content;
-    articleForm.categoryId = data.result.categoryId;
-    articleForm.tags = data.result.tags || [];
-    articleForm.coverImage = data.result.coverImage;
-    articleForm.visibility = data.result.visibility;
-    articleForm.allowComment = data.result.allowComment;
+    // 检查数据结构
+    const articleData = responseData.data || responseData.result;
+    if (!articleData) {
+      throw new Error('返回的文章数据格式不正确');
+    }
 
-    // 更新编辑器内容
-    editor.value.commands.setContent(data.result.htmlContent);
+    // 使用可选链和默认值来安全地更新表单数据
+    articleForm.title = articleData.title || '';
+    articleForm.content = articleData.content || '';
+    articleForm.categoryId = articleData.categoryId || categories.value[0]?.id;
+    articleForm.tags = Array.isArray(articleData.tags) ? articleData.tags : [];
+    articleForm.coverImage = articleData.coverImage || '';
+    articleForm.visibility = articleData.visibility || 'public';
+    articleForm.allowComment = articleData.allowComment ?? true;
+
+    // 确保编辑器已初始化
+    if (editor.value && articleData.htmlContent) {
+      editor.value.commands.setContent(articleData.htmlContent);
+    } else if (editor.value) {
+      editor.value.commands.setContent(articleData.content || '');
+    }
+
+    // 更新状态
+    saveStatus.value = '文章已加载';
   } catch (error) {
     console.error('加载文章失败:', error);
     ElMessage.error(error.message || '加载文章失败');
+
+    // 可选：在加载失败时重定向到列表页面
+    router.push('/my-articles');
   }
-}
+};
 
 // 通用的图片上传方法
 const uploadImageToServer = async (file) => {
