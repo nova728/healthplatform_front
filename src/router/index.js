@@ -1,4 +1,5 @@
 import { createRouter, createWebHistory } from 'vue-router'
+import ArticleDetail from "@/views/forum/ArticleDetail.vue";
 
 const routes = [
     {
@@ -30,6 +31,12 @@ const routes = [
         path: '/forum',
         name: 'Forum',
         component: () => import('../views/forum.vue')
+    },
+    {
+        path: '/editor/:id?',
+        name: 'EditArticle',
+        component: () => import('../views/forum/ArticleEditor.vue'),
+        props: true
     },
     {
         path: '/article/editor',
@@ -107,6 +114,17 @@ const routes = [
                 component: () => import('../views/health/detail/Height.vue')
             }
         ]
+    },
+    {
+        path: '/article/detail/:id',
+        name: 'ArticleDetail',
+        component: () => import('../views/forum/ArticleDetail.vue'),
+        props: true
+    },
+    {
+        path: '/my-articles',
+        name: 'MyArticles',
+        component:()=>import ('../views/MyArticles.vue'),
     }
 ]
 

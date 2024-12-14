@@ -14,6 +14,8 @@ import { createVuetify } from 'vuetify'
 import * as components from 'vuetify/components'
 import * as directives from 'vuetify/directives'
 import request from '@/utils/request'
+import { createPinia } from 'pinia'
+import VueLazyload from 'vue-lazyload'
 import { createStore } from 'vuex';
 import createPersistedState from 'vuex-persistedstate';
 
@@ -22,6 +24,8 @@ const vuetify = createVuetify({
     components,
     directives,
 })
+
+const pinia = createPinia()
 
 //设置 axios 基础 URL
 axios.defaults.baseURL = 'http://localhost:8088/api/user';
@@ -32,6 +36,11 @@ app.config.globalProperties.$request = request
 app.use(router)
     .use(ElementPlus)
     .use(store)
+    .use(pinia)
     .use(vuetify)
+    .use(VueLazyload, {
+        preLoad: 1.3,
+        attempt: 1
+    })
     .mount('#app')
 

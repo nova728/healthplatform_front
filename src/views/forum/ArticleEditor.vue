@@ -1,4 +1,3 @@
-// ArticleEditor.vue
 <template>
   <div class="article-editor">
     <!-- 顶部工具栏 -->
@@ -30,129 +29,132 @@
       </div>
     </div>
 
-    <!-- 主编辑区域 -->
-    <div class="editor-main">
-      <!-- 标题输入 -->
-      <el-input
-          v-model="articleForm.title"
-          placeholder="请输入标题（最多100个字）"
-          class="title-input"
-          maxlength="100"
-          show-word-limit
-      />
+    <!-- 主要内容区域 - 使用 flex 容器包装编辑器和侧边栏 -->
+    <div class="editor-container">
+      <!-- 左侧主编辑区域 -->
+      <div class="editor-main">
+        <!-- 标题输入 -->
+        <el-input
+            v-model="articleForm.title"
+            placeholder="请输入标题（最多100个字）"
+            class="title-input"
+            maxlength="100"
+            show-word-limit
+        />
 
-      <!-- 内容编辑器 -->
-      <div class="editor-wrapper">
-        <!-- 工具栏 -->
-        <div class="editor-toolbar">
-          <el-button-group>
-            <el-button @click="handleFormat('bold')" :class="{ active: isFormatActive('bold') }">
-              <el-icon><Bold /></el-icon>
+        <!-- 内容编辑器 -->
+        <div class="editor-wrapper">
+          <!-- 工具栏 -->
+          <div class="editor-toolbar">
+            <el-button-group>
+              <el-button @click="handleFormat('bold')" :class="{ active: isFormatActive('bold') }">
+                <el-icon><BoldIcon /></el-icon>
+              </el-button>
+              <el-button @click="handleFormat('italic')" :class="{ active: isFormatActive('italic') }">
+                <el-icon><ItalicIcon /></el-icon>
+              </el-button>
+              <el-button @click="handleFormat('underline')" :class="{ active: isFormatActive('underline') }">
+                <UnderlineIcon class="icon" />
+              </el-button>
+            </el-button-group>
+
+            <el-divider direction="vertical" />
+
+            <el-button-group>
+              <el-button @click="insertHeading('h1')">H1</el-button>
+              <el-button @click="insertHeading('h2')">H2</el-button>
+              <el-button @click="insertHeading('h3')">H3</el-button>
+            </el-button-group>
+
+            <el-divider direction="vertical" />
+
+            <el-button @click="insertImage">
+              <ImageIcon class="icon" />
+              插入图片
             </el-button>
-            <el-button @click="handleFormat('italic')" :class="{ active: isFormatActive('italic') }">
-              <el-icon><Italic /></el-icon>
+
+            <el-button @click="insertLink">
+              <Link2 class="icon" />
+              插入链接
             </el-button>
-            <el-button @click="handleFormat('underline')" :class="{ active: isFormatActive('underline') }">
-              <Underline class="icon" />
+
+            <el-button @click="insertCode">
+              <FileCode class="icon" />
+              插入代码
             </el-button>
-          </el-button-group>
 
-          <el-divider direction="vertical" />
-
-          <el-button-group>
-            <el-button @click="insertHeading('h1')">H1</el-button>
-            <el-button @click="insertHeading('h2')">H2</el-button>
-            <el-button @click="insertHeading('h3')">H3</el-button>
-          </el-button-group>
-
-          <el-divider direction="vertical" />
-
-          <el-button @click="insertImage">
-            <ImageIcon class="icon" />
-            插入图片
-          </el-button>
-
-          <el-button @click="insertLink">
-            <Link2 class="icon" />
-            插入链接
-          </el-button>
-
-          <el-button @click="insertCode">
-            <FileCode class="icon" />
-            插入代码
-          </el-button>
-
-          <el-button @click="insertTable">
-            <Table2 class="icon" />
-            插入表格
-          </el-button>
-        </div>
-
-        <!-- 编辑器主体 -->
-        <div class="editor-content" ref="editorRef"></div>
-      </div>
-    </div>
-
-    <!-- 右侧设置面板 -->
-    <div class="editor-sidebar">
-      <el-card class="settings-card">
-        <template #header>
-          <div class="card-header">
-            <span>文章设置</span>
+            <el-button @click="insertTable">
+              <Table2 class="icon" />
+              插入表格
+            </el-button>
           </div>
-        </template>
 
-        <el-form :model="articleForm" label-width="80px">
-          <el-form-item label="分类">
-            <el-select v-model="articleForm.categoryId" placeholder="选择分类">
-              <el-option
-                  v-for="category in categories"
-                  :key="category.id"
-                  :label="category.name"
-                  :value="category.id"
+          <!-- 编辑器主体 -->
+          <div class="editor-content" ref="editorRef"></div>
+        </div>
+      </div>
+
+      <!-- 右侧设置面板 -->
+      <div class="editor-sidebar">
+        <el-card class="settings-card">
+          <template #header>
+            <div class="card-header">
+              <span>文章设置</span>
+            </div>
+          </template>
+
+          <el-form :model="articleForm" label-width="80px">
+            <el-form-item label="分类">
+              <el-select v-model="articleForm.categoryId" placeholder="选择分类">
+                <el-option
+                    v-for="category in categories"
+                    :key="category.id"
+                    :label="category.name"
+                    :value="category.id"
+                />
+              </el-select>
+            </el-form-item>
+
+            <el-form-item label="标签">
+              <el-tag
+                  v-for="tag in articleForm.tags"
+                  :key="tag"
+                  closable
+                  @close="removeTag(tag)"
+                  class="tag-item"
+              >
+                {{ tag }}
+              </el-tag>
+
+              <el-input
+                  v-if="inputTagVisible"
+                  ref="tagInputRef"
+                  v-model="inputTag"
+                  class="tag-input"
+                  size="small"
+                  @keyup.enter="confirmTag"
+                  @blur="confirmTag"
               />
-            </el-select>
-          </el-form-item>
 
-          <el-form-item label="标签">
-            <el-tag
-                v-for="tag in articleForm.tags"
-                :key="tag"
-                closable
-                @close="removeTag(tag)"
-                class="tag-item"
-            >
-              {{ tag }}
-            </el-tag>
+              <el-button v-else class="button-new-tag" size="small" @click="showTagInput">
+                + 添加标签
+              </el-button>
+            </el-form-item>
 
-            <el-input
-                v-if="inputTagVisible"
-                ref="tagInputRef"
-                v-model="inputTag"
-                class="tag-input"
-                size="small"
-                @keyup.enter="confirmTag"
-                @blur="confirmTag"
-            />
-
-            <el-button v-else class="button-new-tag" size="small" @click="showTagInput">
-              + 添加标签
-            </el-button>
-          </el-form-item>
-
-          <el-form-item label="封面图">
-            <el-upload
-                class="cover-uploader"
-                :show-file-list="false"
-                :before-upload="beforeCoverUpload"
-                :http-request="uploadCover"
-            >
-              <img v-if="articleForm.coverImage" :src="articleForm.coverImage" class="cover-image">
-              <el-icon v-else class="cover-uploader-icon"><Plus /></el-icon>
-            </el-upload>
-          </el-form-item>
-        </el-form>
-      </el-card>
+            <el-form-item label="封面图">
+              <el-upload
+                  class="cover-uploader"
+                  :show-file-list="false"
+                  :before-upload="beforeCoverUpload"
+                  :http-request="uploadCover"
+              >
+                <img v-if="articleForm.coverImage" :src="articleForm.coverImage" class="cover-image">
+                <el-icon v-else class="cover-uploader-icon"><Plus /></el-icon>
+              </el-upload>
+            </el-form-item>
+          </el-form>
+        </el-card>
+      </div>
     </div>
 
     <!-- 发布对话框 -->
@@ -269,7 +271,7 @@
 </template>
 
 <script setup>
-import { ref, reactive, onMounted, onBeforeUnmount,nextTick } from 'vue'
+import { ref, reactive, onMounted, onBeforeUnmount,nextTick ,watch} from 'vue'
 import { useRoute, useRouter } from 'vue-router'
 import {useStore} from 'vuex'
 import { debounce } from 'lodash'
@@ -281,14 +283,16 @@ import Table from '@tiptap/extension-table'
 import TableRow from '@tiptap/extension-table-row'
 import TableCell from '@tiptap/extension-table-cell'
 import TableHeader from '@tiptap/extension-table-header'
-import CodeBlock from '@tiptap/extension-code-block'
+import Bold from '@tiptap/extension-bold'
+import Italic from '@tiptap/extension-italic'
+import Underline from '@tiptap/extension-underline'
 import { ElMessage, ElMessageBox } from 'element-plus'
 import {
   ArrowLeft,
   Eye,
-  Bold,
-  Italic,
-  Underline,
+  Bold as BoldIcon,        // 添加 Icon 后缀作为别名
+  Italic as ItalicIcon,    // 添加 Icon 后缀作为别名
+  Underline as UnderlineIcon,  // 添加 Icon 后缀作为别名
   Image as ImageIcon,
   Link2,
   FileCode,
@@ -303,6 +307,11 @@ const route = useRoute()
 const router = useRouter()
 const store = useStore()
 const articleId = ref(route.params.id)
+
+
+// API Methods
+const BASE_URL = 'http://localhost:8088/api/articles';
+const FORMAT_URL = 'http://localhost:8088/api/articles/format';
 
 // 编辑器状态
 const editorRef = ref(null)
@@ -361,36 +370,57 @@ const categories = ref([
 
 // 初始化编辑器
 onMounted(() => {
-  editor.value = new Editor({
-    element: editorRef.value,
-    extensions: [
-      StarterKit,
-      Image,
-      Link.configure({
-        openOnClick: false
-      }),
-      Table.configure({
-        resizable: true
-      }),
-      TableRow,
-      TableCell,
-      TableHeader,
-      CodeBlock
-    ],
-    content: '',
-    onUpdate: ({ editor }) => {
-      articleForm.content = editor.getText();
-      articleForm.htmlContent = editor.getHTML();
-      // 使用Promise包装自动保存调用
-      Promise.resolve().then(() => autoSave());
-    }
-  })
+  nextTick(async () => {
+    try {
+      if (!editorRef.value) {
+        console.error('编辑器 DOM 元素未找到');
+        return;
+      }
 
-  // 如果有文章ID，加载文章内容
-  if (articleId.value) {
-    loadArticle()
-  }
-})
+      console.log('开始初始化编辑器...');
+      editor.value = new Editor({
+        element: editorRef.value,
+        extensions: [
+          StarterKit.configure({
+            // 禁用 StarterKit 中的这些功能，因为我们将单独配置
+            bold: false,
+            italic: false,
+          }),
+          Bold,        // 单独添加 Bold 扩展
+          Italic,      // 单独添加 Italic 扩展
+          Underline,   // 单独添加 Underline 扩展
+          Image,
+          Link.configure({
+            openOnClick: false
+          }),
+          Table.configure({
+            resizable: true
+          }),
+          TableRow,
+          TableCell,
+          TableHeader
+        ],
+        content: '',
+        onUpdate: ({ editor }) => {
+          onEditorUpdate();
+          articleForm.content = editor.getText();
+          articleForm.htmlContent = editor.getHTML();
+          Promise.resolve().then(() => autoSave());
+        }
+      });
+
+      console.log('编辑器初始化完成');
+
+      // 如果有文章ID，加载文章内容
+      if (articleId.value) {
+        await loadArticle();
+      }
+    } catch (error) {
+      console.error('编辑器初始化失败:', error);
+      ElMessage.error('编辑器初始化失败，请刷新页面重试');
+    }
+  });
+});
 
 onBeforeUnmount(() => {
   if (editor.value) {
@@ -401,16 +431,90 @@ onBeforeUnmount(() => {
 
 // 编辑器功能方法
 const handleFormat = (type) => {
-  editor.value.chain().focus()[type]().run()
-}
+  try {
+    if (!editor.value) {
+      console.error('编辑器未初始化');
+      ElMessage.error('编辑器未初始化，请刷新页面重试');
+      return;
+    }
+
+    // 使用正确的命令名称映射
+    const commandMap = {
+      'bold': 'toggleBold',
+      'italic': 'toggleItalic',
+      'underline': 'toggleUnderline'
+    };
+
+    const commandName = commandMap[type];
+
+    if (!editor.value.commands[commandName]) {
+      console.error(`命令 ${commandName} 不可用`);
+      return;
+    }
+
+    // 使用正确的命令调用方式
+    editor.value.chain().focus()[commandName]().run();
+
+  } catch (error) {
+    console.error('格式化操作失败:', error);
+    ElMessage.error('格式化失败，请重试');
+  }
+};
+
+const insertHeading = async (level) => {
+  try {
+    if (!editor.value) {
+      console.warn('编辑器未初始化');
+      return;
+    }
+
+    const { from, to } = editor.value.state.selection;
+    const text = editor.value.state.doc.textBetween(from, to);
+
+    if (!text.trim()) {
+      if (editor.value.commands && editor.value.commands.toggleHeading) {
+        editor.value.commands.toggleHeading({ level: parseInt(level.substr(1)) });
+      }
+      return;
+    }
+
+    const response = await updateHeadingFormat(level, text, from, to);
+    if (response.code === 200) {
+      // 更新编辑器内容
+      if (editor.value.commands && editor.value.commands.setContent) {
+        editor.value.commands.setContent(response.result.htmlContent);
+      }
+      // 更新表单内容
+      articleForm.content = response.result.content;
+      articleForm.htmlContent = response.result.htmlContent;
+    }
+  } catch (error) {
+    console.error('标题格式化失败:', error);
+    ElMessage.error(error.message || '标题格式化失败');
+    // 失败时回退到默认行为
+    if (editor.value?.commands && editor.value.commands.toggleHeading) {
+      editor.value.commands.toggleHeading({ level: parseInt(level.substr(1)) });
+    }
+  }
+};
 
 const isFormatActive = (type) => {
-  return editor.value?.isActive(type) || false
-}
+  if (!editor.value || !editor.value.isActive) return false;
 
-const insertHeading = (level) => {
-  editor.value.chain().focus().toggleHeading({ level: parseInt(level.substr(1)) }).run()
-}
+  // 使用相同的命令名称映射
+  const commandMap = {
+    'bold': 'bold',       // isActive 使用简单类型名称
+    'italic': 'italic',
+    'underline': 'underline'
+  };
+
+  try {
+    return editor.value.isActive(commandMap[type]);
+  } catch (error) {
+    console.error(`检查格式 ${type} 状态失败:`, error);
+    return false;
+  }
+};
 
 const insertImage = () => {
   imageDialogVisible.value = true
@@ -421,9 +525,10 @@ const insertLink = () => {
 }
 
 const insertCode = () => {
-  editor.value.chain().focus().toggleCodeBlock().run()
+  if (editor.value?.commands?.toggleCodeBlock) {
+    editor.value.commands.toggleCodeBlock();
+  }
 }
-
 const insertTable = () => {
   editor.value.chain().focus().insertTable({ rows: 3, cols: 3, withHeaderRow: true }).run()
 }
@@ -511,11 +616,14 @@ const autoSave = debounce(async () => {
   if (!articleForm.title?.trim()) return;
 
   try {
+    // 更改保存状态
     isSaving.value = true;
     saveStatus.value = '正在保存...';
 
     const userId = store.state.user.id;
-    console.log('用户ID：',userId);
+    if (!userId) {
+      throw new Error('请先登录');
+    }
 
     // 构造请求数据
     const articleData = {
@@ -532,26 +640,67 @@ const autoSave = debounce(async () => {
     };
 
     let response;
+    // 如果已有文章ID，则更新文章
     if (articleId.value) {
-      response = await updateArticle(articleData, userId);
+      response = await fetch(`${BASE_URL}/${userId}/${articleId.value}`, {
+        method: 'PUT',
+        headers: {
+          'Content-Type': 'application/json'
+        },
+        credentials: 'include',
+        body: JSON.stringify(articleData)
+      });
     } else {
-      response = await createArticle(articleData, userId);
+      // 首次保存，创建新文章
+      response = await fetch(`${BASE_URL}/${userId}`, {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json'
+        },
+        credentials: 'include',
+        body: JSON.stringify(articleData)
+      });
     }
 
-    if (!articleId.value && response.result?.id) {
-      articleId.value = response.result.id;
-      router.replace(`/editor/${response.result.id}`);
+    const responseData = await response.json();
+    console.log('Save response:', responseData);
+
+    if (!response.ok) {
+      throw new Error(responseData.message || '保存失败');
     }
 
-    saveStatus.value = '所有更改已保存';
+    // 如果是首次保存，设置文章ID并更新路由
+    if (!articleId.value && responseData.data?.id) {
+      articleId.value = responseData.data.id;
+      // 使用 replace 而不是 push，这样不会创建新的历史记录
+      await router.replace(`/editor/${responseData.data.id}`);
+    }
+
+    // 保存成功
+    const now = new Date().toLocaleTimeString();
+    saveStatus.value = '已保存 ' + now;
+    setTimeout(() => {
+      saveStatus.value = '所有更改已保存';
+    }, 3000);
+
   } catch (error) {
     console.error('自动保存失败:', error);
-    saveStatus.value = '保存失败';
+    saveStatus.value = '保存失败 ' + error.message;
     ElMessage.error(error.message || '保存失败');
   } finally {
     isSaving.value = false;
   }
 }, 3000);
+
+// 监听编辑器内容变化
+const onEditorUpdate = () => {
+  if (editor.value) {
+    articleForm.content = editor.value.getText();
+    articleForm.htmlContent = editor.value.getHTML();
+    saveStatus.value = '正在编辑...';
+    autoSave();
+  }
+};
 
 const publishArticle = async () => {
   try {
@@ -564,13 +713,35 @@ const publishArticle = async () => {
       throw new Error('请先登录');
     }
 
+    const DELETE_DRAFT_URL = `${BASE_URL}/${userId}/delete-draft`;
+
+    // 构造删除草稿的请求数据
+    const draftData = {
+      title: articleForm.title,
+      content: editor.value.getText(),
+      userId: userId
+    };
+
+    // 删除草稿
+    const deleteResponse = await fetch(DELETE_DRAFT_URL, {
+      method: 'DELETE',
+      headers: {
+        'Content-Type': 'application/json'
+      },
+      credentials: 'include',
+      body: JSON.stringify(draftData)
+    });
+
+    const deleteResult = await deleteResponse.json();
+
+    // 构造发布数据
     const articleData = {
       title: articleForm.title,
       content: editor.value.getText(),
       htmlContent: editor.value.getHTML(),
       coverImage: articleForm.coverImage || '',
       categoryId: articleForm.categoryId,
-      status: 1,
+      status: 1, // 发布状态
       visibility: publishForm.visibility,
       allowComment: publishForm.allowComment,
       publishTime: publishForm.timeType === 'schedule' ?
@@ -579,32 +750,23 @@ const publishArticle = async () => {
       tags: Array.from(articleForm.tags || [])
     };
 
-    console.log(articleData);
-
     let response;
     if (articleId.value) {
       response = await updateArticle(articleData, userId);
-      console.log('1:',response);
-      if (response.code === 200) {
-        ElMessage.success('文章更新成功');
-        publishDialogVisible.value = false;
-        await router.push(`/article/${articleId.value}`);
-      } else {
-        throw new Error(response.message || '更新失败');
-      }
     } else {
       response = await createArticle(articleData, userId);
-      console.log('2:',response);
-      if (response.code === 200) {
-        ElMessage.success('文章发布成功');
-        publishDialogVisible.value = false;
-        await router.push(`/article/${response.data.id}`);
+    }
+
+    if (response.code === 200) {
+      ElMessage.success('文章发布成功');
+      publishDialogVisible.value = false;
+      if (articleId.value) {
+        await router.push(`/article/${articleId.value}`);
       } else {
-        throw new Error(response.message || '发布失败');
+        await router.push('/forum');
       }
     }
   } catch (error) {
-    console.error('发布失败:', error);
     ElMessage.error(error.message || '文章发布失败');
   } finally {
     isPublishing.value = false;
@@ -636,10 +798,57 @@ const showPublishDialog = () => {
   publishDialogVisible.value = true
 }
 
+// 更新文本格式（加粗、斜体、下划线）
+const updateTextFormat = async (type, content, startPos, endPos) => {
+  const userId = store.state.user.id;
+  if (!userId || !articleId.value) return;
 
+  const response = await fetch(`${FORMAT_URL}/${userId}/${articleId.value}/style`, {
+    method: 'PUT',
+    headers: {
+      'Content-Type': 'application/json'
+    },
+    credentials: 'include',
+    body: JSON.stringify({
+      type,
+      content,
+      startPos,
+      endPos
+    })
+  });
 
-// API Methods
-const BASE_URL = 'http://localhost:8088/api/articles';
+  const data = await response.json();
+  if (!response.ok) {
+    throw new Error(data.message || '更新格式失败');
+  }
+  return data;
+};
+
+// 更新标题格式
+const updateHeadingFormat = async (level, content, startPos, endPos) => {
+  const userId = store.state.user.id;
+  if (!userId || !articleId.value) return;
+
+  const response = await fetch(`${FORMAT_URL}/${userId}/${articleId.value}/heading`, {
+    method: 'PUT',
+    headers: {
+      'Content-Type': 'application/json'
+    },
+    credentials: 'include',
+    body: JSON.stringify({
+      level,
+      content,
+      startPos,
+      endPos
+    })
+  });
+
+  const data = await response.json();
+  if (!response.ok) {
+    throw new Error(data.message || '更新标题格式失败');
+  }
+  return data;
+};
 
 // 创建文章
 const createArticle = async (articleData, userId) => {
@@ -681,34 +890,54 @@ const updateArticle = async (articleData, userId) => {
 // 加载文章
 const loadArticle = async () => {
   try {
-    const userId = store.state.user.id
-    if (!userId || !articleId.value) return;
+    const userId = store.state.user.id;
+    if (!userId || !articleId.value) {
+      throw new Error('缺少用户ID或文章ID');
+    }
 
     const response = await fetch(`${BASE_URL}/${userId}/${articleId.value}`, {
       credentials: 'include'
     });
 
-    const data = await response.json();
+    const responseData = await response.json();
+    console.log('Article data:', responseData); // 添加日志以检查返回数据
+
     if (!response.ok) {
-      throw new Error(data.message || '加载文章失败');
+      throw new Error(responseData.message || '加载文章失败');
     }
 
-    // 更新表单数据
-    articleForm.title = data.result.title;
-    articleForm.content = data.result.content;
-    articleForm.categoryId = data.result.categoryId;
-    articleForm.tags = data.result.tags || [];
-    articleForm.coverImage = data.result.coverImage;
-    articleForm.visibility = data.result.visibility;
-    articleForm.allowComment = data.result.allowComment;
+    // 检查数据结构
+    const articleData = responseData.data || responseData.result;
+    if (!articleData) {
+      throw new Error('返回的文章数据格式不正确');
+    }
 
-    // 更新编辑器内容
-    editor.value.commands.setContent(data.result.htmlContent);
+    // 使用可选链和默认值来安全地更新表单数据
+    articleForm.title = articleData.title || '';
+    articleForm.content = articleData.content || '';
+    articleForm.categoryId = articleData.categoryId || categories.value[0]?.id;
+    articleForm.tags = Array.isArray(articleData.tags) ? articleData.tags : [];
+    articleForm.coverImage = articleData.coverImage || '';
+    articleForm.visibility = articleData.visibility || 'public';
+    articleForm.allowComment = articleData.allowComment ?? true;
+
+    // 确保编辑器已初始化
+    if (editor.value && articleData.htmlContent) {
+      editor.value.commands.setContent(articleData.htmlContent);
+    } else if (editor.value) {
+      editor.value.commands.setContent(articleData.content || '');
+    }
+
+    // 更新状态
+    saveStatus.value = '文章已加载';
   } catch (error) {
     console.error('加载文章失败:', error);
     ElMessage.error(error.message || '加载文章失败');
+
+    // 可选：在加载失败时重定向到列表页面
+    router.push('/my-articles');
   }
-}
+};
 
 // 通用的图片上传方法
 const uploadImageToServer = async (file) => {
@@ -795,13 +1024,19 @@ const saveDraft = async () => {
       response = await createArticle(articleData, userId);
     }
 
-    if (!articleId.value) {
-      articleId.value = response.result.id;
-      router.replace(`/editor/${response.result.id}`);
+    // 检查响应数据结构
+    if (response && response.code === 200 && response.data) {
+      const savedArticle = response.data;
+      if (savedArticle.id) {
+        articleId.value = savedArticle.id;
+        router.replace(`/forum`);
+        ElMessage.success('草稿保存成功');
+        return savedArticle;
+      }
     }
 
-    ElMessage.success('草稿保存成功');
-    return response.result;
+    throw new Error('保存草稿失败：服务器响应异常');
+
   } catch (error) {
     console.error('保存草稿失败:', error);
     ElMessage.error(error.message || '保存失败');
@@ -841,6 +1076,13 @@ const goBack = () => {
 const previewArticle = () => {
   window.open(`/article/${articleId.value}/preview`, '_blank')
 }
+
+watch(() => articleForm.title, () => {
+  if (articleForm.title?.trim()) {
+    saveStatus.value = '正在编辑...';
+    autoSave();
+  }
+});
 </script>
 
 <style scoped>
@@ -849,6 +1091,16 @@ const previewArticle = () => {
   display: flex;
   flex-direction: column;
   background-color: #f5f7fa;
+  overflow: hidden; /* 防止内容溢出 */
+}
+
+.editor-main {
+  flex: 1;
+  min-width: 0; /* 防止flex子项溢出 */
+  display: flex;
+  flex-direction: column;
+  gap: 20px;
+  overflow-y: auto;
 }
 
 .editor-header {
@@ -861,6 +1113,15 @@ const previewArticle = () => {
   position: sticky;
   top: 0;
   z-index: 100;
+}
+
+.editor-container {
+  flex: 1;
+  display: flex;
+  gap: 20px;
+  padding: 20px;
+  overflow: hidden;
+  height: calc(100vh - 65px); /* 减去头部高度 */
 }
 
 .left-tools, .right-tools {
@@ -914,7 +1175,9 @@ const previewArticle = () => {
   box-shadow: 0 2px 12px 0 rgba(0, 0, 0, 0.1);
   display: flex;
   flex-direction: column;
+  min-height: 500px;
 }
+
 
 .editor-toolbar {
   padding: 12px;
@@ -938,15 +1201,35 @@ const previewArticle = () => {
     margin-top: 0.75em;
   }
 
+  /* 移除默认焦点边框 */
+  &:focus {
+    outline: none;
+  }
+
+  /* 自定义选择区域样式 */
+  ::selection {
+    background: rgba(64, 158, 255, 0.1);
+    color: inherit;
+  }
+
+  /* 基础文本样式 */
+  p {
+    margin: 1em 0;
+  }
+
+  /* 标题样式 */
+  h1, h2, h3, h4, h5, h6 {
+    line-height: 1.1;
+    font-weight: 600;
+    margin: 1.5em 0 0.5em;
+  }
+
+  /* 列表样式 */
   ul, ol {
     padding: 0 1rem;
   }
 
-  h1, h2, h3, h4, h5, h6 {
-    line-height: 1.1;
-    font-weight: 600;
-  }
-
+  /* 代码块样式 */
   code {
     background-color: rgba(97, 97, 97, 0.1);
     color: #616161;
@@ -967,17 +1250,20 @@ const previewArticle = () => {
     }
   }
 
+  /* 图片样式 */
   img {
     max-width: 100%;
     height: auto;
   }
 
+  /* 引用样式 */
   blockquote {
     padding-left: 1rem;
     border-left: 3px solid #999;
     color: #666;
   }
 
+  /* 表格样式 */
   table {
     border-collapse: collapse;
     table-layout: fixed;
@@ -1008,11 +1294,13 @@ const previewArticle = () => {
 .editor-sidebar {
   width: 300px;
   flex-shrink: 0;
+  height: 100%;
+  overflow-y: auto;
 }
 
 .settings-card {
   position: sticky;
-  top: 20px;
+  top: 0;
 }
 
 .cover-uploader :deep(.el-upload) {
@@ -1118,5 +1406,21 @@ const previewArticle = () => {
 :deep(.el-tabs__nav-wrap) {
   padding: 0 20px;
 }
+@media screen and (max-width: 1200px) {
+  .editor-container {
+    flex-direction: column;
+    height: auto;
+    overflow-y: visible;
+  }
 
+  .editor-sidebar {
+    width: 100%;
+    height: auto;
+  }
+
+  .settings-card {
+    position: relative;
+    margin-bottom: 20px;
+  }
+}
 </style>

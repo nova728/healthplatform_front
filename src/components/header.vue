@@ -43,6 +43,46 @@
           </el-button>
         </el-menu-item>
 
+        <el-menu-item index="notification" class="notification-item">
+          <el-popover
+              placement="bottom-end"
+              :width="300"
+              trigger="click"
+              popper-class="notification-popover"
+          >
+            <template #reference>
+              <el-badge :value="unreadCount" :hidden="!hasUnread" class="notification-badge">
+                <Bell class="notification-icon" />
+              </el-badge>
+            </template>
+
+            <div class="notification-container">
+              <div class="notification-header">
+                <span>通知</span>
+                <el-button type="text" @click="markAllAsRead">全部标为已读</el-button>
+              </div>
+              <div class="notification-list">
+                <template v-if="notifications.length">
+                  <div v-for="notification in notifications"
+                       :key="notification.id"
+                       class="notification-item"
+                       :class="{ 'unread': !notification.isRead }"
+                       @click="handleNotificationClick(notification)">
+                    <img :src="notification.sender?.avatar || defaultAvatar" class="sender-avatar" />
+                    <div class="notification-content">
+                      <div class="notification-message">{{ notification.message }}</div>
+                      <div class="notification-time">{{ formatTime(notification.createTime) }}</div>
+                    </div>
+                  </div>
+                </template>
+                <div v-else class="empty-notifications">
+                  暂无通知
+                </div>
+              </div>
+            </div>
+          </el-popover>
+        </el-menu-item>
+
         <el-sub-menu index="3" class="user-menu">
           <template #title>
             <div class="user-info">
@@ -73,9 +113,10 @@
 </template>
 
 <script setup>
-import { ref, inject,computed,onMounted } from 'vue';
+import { ref, inject,computed,onMounted, onBeforeUnmount } from 'vue';
 import { useRouter } from 'vue-router';
 import { useStore } from 'vuex';
+import { Bell } from 'lucide-vue-next';
 
 const router = useRouter();
 const store = useStore();
@@ -87,18 +128,106 @@ const user = computed(() => store.state.user);
 const userName = computed(() => user.value?.username || 'User');
 const userAvatar = computed(() => user.value?.avatar || defaultAvatar);
 
+const notifications = ref([]);
+const unreadCount = computed(() => notifications.value.filter(n => !n.isRead).length);
+const hasUnread = computed(() => unreadCount.value > 0);
+
+// WebSocket 连接
+let ws = null;
+
+// 初始化 WebSocket 连接
+const initWebSocket = () => {
+  if (isLoggedIn.value && user.value?.id) {
+    ws = new WebSocket(`ws://localhost:8088/api/ws/notifications/${user.value.id}`);
+
+    ws.onopen = () => {
+      console.log('WebSocket connected');
+    };
+
+    ws.onmessage = (event) => {
+      const notification = JSON.parse(event.data);
+      notifications.value.unshift(notification);
+    };
+
+    ws.onerror = (error) => {
+      console.error('WebSocket error:', error);
+    };
+  }
+};
+
+// 获取通知列表
+const fetchNotifications = async () => {
+  try {
+    const response = await fetch(`http://localhost:8088/api/notifications/${user.value?.id}`);
+    if (!response.ok) throw new Error('Failed to fetch notifications');
+    const data = await response.json();
+    notifications.value = data.data || [];
+  } catch (error) {
+    console.error('Error fetching notifications:', error);
+  }
+};
+
+// 标记所有通知为已读
+const markAllAsRead = async () => {
+  try {
+    const response = await fetch(
+        `http://localhost:8088/api/notifications/${user.value?.id}/mark-all-read`,
+        { method: 'POST' }
+    );
+    if (!response.ok) throw new Error('Failed to mark notifications as read');
+    notifications.value = notifications.value.map(n => ({ ...n, isRead: true }));
+  } catch (error) {
+    console.error('Error marking notifications as read:', error);
+  }
+};
+
+// 处理通知点击
+const handleNotificationClick = async (notification) => {
+  if (!notification.isRead) {
+    try {
+      await fetch(
+          `http://localhost:8088/api/notifications/${user.value?.id}/${notification.id}/mark-read`,
+          { method: 'POST' }
+      );
+      notification.isRead = true;
+    } catch (error) {
+      console.error('Error marking notification as read:', error);
+    }
+  }
+
+  // 根据通知类型导航到相应页面
+  if (notification.type === 'comment') {
+    router.push(`/article/${notification.articleId}`);
+  } else if (notification.type === 'like') {
+    router.push(`/article/${notification.articleId}`);
+  }
+};
+
 const handleAvatarError = (e) => {
   e.target.src = defaultAvatar;
+};
+
+// 格式化时间
+const formatTime = (time) => {
+  return dayjs(time).format('YYYY-MM-DD HH:mm');
 };
 
 onMounted(async () => {
   if (isLoggedIn.value) {
     try {
       console.log('头像：',userAvatar.value);
+      await fetchNotifications();
+      initWebSocket();
 //await store.dispatch('getUserInfo'); // 确保在 Vuex 中实现此 action
     } catch (error) {
       console.error('Failed to fetch user info:', error);
     }
+  }
+});
+
+onBeforeUnmount(() => {
+  if (ws) {
+    ws.close();
   }
 });
 
@@ -116,15 +245,15 @@ const authItems = [
 const userMenuItems = [
   {
     index: '3-1',
-    label: '个人资料',
+    label: '我的文章',
     icon: '/src/assets/images/icon/file.png',
-    action: () => router.push({ name: 'EditInformation' })
+    action: () => router.push({ name: 'MyArticles' })
   },
   {
     index: '3-2',
-    label: '设置',
-    icon: '/src/assets/images/icon/set.png',
-    action: () => router.push({ name: 'Setting' })
+    label: '个人中心',
+    icon: '/src/assets/images/icon/person.png',
+    action: () => router.push({ name: 'EditInformation' })
   },
   {
     index: '3-3',
@@ -147,6 +276,7 @@ const handleSelect = (key, keyPath) => console.log(key, keyPath);
   background: #ffffff;
 }
 
+/* Logo styles */
 .logo-container {
   padding: 0 20px;
   transition: all 0.3s ease;
@@ -162,10 +292,18 @@ const handleSelect = (key, keyPath) => console.log(key, keyPath);
   transform: scale(1.05);
 }
 
+/* Menu items styles */
 .menu-items-left {
   display: flex;
   margin-right: auto;
   gap: 10px;
+}
+
+.menu-items-right {
+  display: flex;
+  align-items: center;
+  margin-right: 20px;
+  gap: 8px; /* Add gap between items */
 }
 
 .menu-item-animated {
@@ -192,12 +330,7 @@ const handleSelect = (key, keyPath) => console.log(key, keyPath);
   width: 100%;
 }
 
-.menu-items-right {
-  display: flex;
-  align-items: center;
-  margin-right: 20px;
-}
-
+/* Auth items styles */
 .auth-item {
   font-size: 16px;
   font-weight: 500;
@@ -209,6 +342,7 @@ const handleSelect = (key, keyPath) => console.log(key, keyPath);
   color: var(--el-color-primary);
 }
 
+/* Record button styles */
 .record-button {
   display: flex;
   align-items: center;
@@ -229,6 +363,101 @@ const handleSelect = (key, keyPath) => console.log(key, keyPath);
   transition: transform 0.3s ease;
 }
 
+/* Notification styles */
+.notification-item {
+  display: flex;
+  align-items: center;
+  height: 64px;
+  padding: 0 8px;
+}
+
+.notification-badge {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  height: 100%;
+}
+
+.notification-badge :deep(.el-badge__content) {
+  background-color: #f56c6c;
+  z-index: 10;
+}
+
+.notification-icon {
+  width: 24px;
+  height: 24px;
+  color: #606266;
+  cursor: pointer;
+  transition: all 0.3s ease;
+}
+
+.notification-icon:hover {
+  color: var(--el-color-primary);
+}
+
+/* Notification popover styles */
+.notification-container {
+  max-height: 400px;
+  overflow-y: auto;
+}
+
+.notification-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  padding: 12px 16px;
+  border-bottom: 1px solid #ebeef5;
+}
+
+.notification-list {
+  padding: 8px 0;
+}
+
+.notification-list .notification-item {
+  display: flex;
+  padding: 12px 16px;
+  cursor: pointer;
+  transition: all 0.3s ease;
+  height: auto;
+}
+
+.notification-list .notification-item:hover {
+  background-color: #f5f7fa;
+}
+
+.notification-item.unread {
+  background-color: #f0f9ff;
+}
+
+.sender-avatar {
+  width: 40px;
+  height: 40px;
+  border-radius: 50%;
+  margin-right: 12px;
+}
+
+.notification-content {
+  flex: 1;
+}
+
+.notification-message {
+  font-size: 14px;
+  color: #303133;
+  margin-bottom: 4px;
+}
+
+.notification-time {
+  font-size: 12px;
+  color: #909399;
+}
+
+.empty-notifications {
+  padding: 24px;
+  text-align: center;
+  color: #909399;
+}
+
+/* User menu styles */
 .user-info {
   display: flex;
   align-items: center;
@@ -249,6 +478,7 @@ const handleSelect = (key, keyPath) => console.log(key, keyPath);
   border: 2px solid #fff;
   box-shadow: 0 2px 8px rgba(0, 0, 0, 0.1);
   transition: all 0.3s ease;
+  object-fit: cover;
 }
 
 .avatar:hover {
@@ -278,15 +508,4 @@ const handleSelect = (key, keyPath) => console.log(key, keyPath);
   height: 18px;
   opacity: 0.8;
 }
-
-.avatar {
-  width: 32px;
-  height: 32px;
-  border-radius: 50%;
-  border: 2px solid #fff;
-  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.1);
-  transition: all 0.3s ease;
-  object-fit: cover; /* 确保图片适当裁剪以填充圆形区域 */
-}
-
 </style>
