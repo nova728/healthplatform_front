@@ -59,18 +59,18 @@ const routes = [
             {
                 path: 'diet-record',
                 name: 'DietRecord',
-                component: () => import('../views/health/DietRecord.vue')
+                component: () => import('../views/health/DietRecord/index.vue')
             },
             {
                 path: 'health-report',
                 name: 'HealthReport',
                 component: () => import('../views/health/HealthReport.vue')
             },
-            {
-                path: 'health-competition',
-                name: 'HealthCompetition',
-                component: () => import('../views/health/HealthCompetition.vue')
-            },
+            // {
+            //     path: 'health-competition',
+            //     name: 'HealthCompetition',
+            //     component: () => import('../views/health/HealthCompetition.vue')
+            // },
             {
                 path: 'heart-rate',
                 name: 'HeartRateDetail',

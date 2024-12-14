@@ -151,7 +151,7 @@ body {
   flex-grow: 1; /* 使 main-content 占据中间的自适应空间 */
   overflow: hidden;
   position: relative;
-  //box-sizing: border-box;
+  box-sizing: border-box;
 }
 
 .input {
