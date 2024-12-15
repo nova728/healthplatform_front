@@ -117,6 +117,7 @@ import { ref, inject,computed,onMounted, onBeforeUnmount } from 'vue';
 import { useRouter } from 'vue-router';
 import { useStore } from 'vuex';
 import { Bell } from 'lucide-vue-next';
+import dayjs from 'dayjs';
 
 const router = useRouter();
 const store = useStore();
@@ -134,24 +135,64 @@ const hasUnread = computed(() => unreadCount.value > 0);
 
 // WebSocket 连接
 let ws = null;
+let reconnectAttempts = 0;
+const MAX_RECONNECT_ATTEMPTS = 5;
 
 // 初始化 WebSocket 连接
 const initWebSocket = () => {
   if (isLoggedIn.value && user.value?.id) {
-    ws = new WebSocket(`ws://localhost:8088/api/ws/notifications/${user.value.id}`);
+    try {
+      console.log('Initializing WebSocket connection...');
+      ws = new WebSocket(`ws://localhost:8088/ws/notifications/${user.value.id}`);
 
-    ws.onopen = () => {
-      console.log('WebSocket connected');
-    };
+      ws.onopen = () => {
+        console.log('WebSocket connection established');
+        reconnectAttempts = 0; // 重置重连计数
+      };
 
-    ws.onmessage = (event) => {
-      const notification = JSON.parse(event.data);
-      notifications.value.unshift(notification);
-    };
+      ws.onmessage = (event) => {
+        try {
+          console.log('Received WebSocket message:', event.data);
+          const notification = JSON.parse(event.data);
+          notifications.value.unshift(notification);
 
-    ws.onerror = (error) => {
-      console.error('WebSocket error:', error);
-    };
+          // 显示通知提示
+          ElMessage({
+            message: notification.message,
+            type: 'info',
+            duration: 3000
+          });
+        } catch (error) {
+          console.error('Error processing notification:', error);
+        }
+      };
+
+      ws.onerror = (error) => {
+        console.error('WebSocket error:', error);
+      };
+
+      ws.onclose = (event) => {
+        console.log('WebSocket connection closed:', event.code, event.reason);
+        handleReconnect();
+      };
+
+    } catch (error) {
+      console.error('Error creating WebSocket connection:', error);
+      handleReconnect();
+    }
+  }
+};
+
+const handleReconnect = () => {
+  if (reconnectAttempts < MAX_RECONNECT_ATTEMPTS) {
+    reconnectAttempts++;
+    console.log(`Attempting to reconnect (${reconnectAttempts}/${MAX_RECONNECT_ATTEMPTS})...`);
+    const timeout = Math.min(1000 * Math.pow(2, reconnectAttempts), 30000);
+    setTimeout(() => {
+      initWebSocket();
+    }, timeout);
+  } else {
+    console.log('Max reconnection attempts reached');
   }
 };
 
@@ -215,19 +256,19 @@ const formatTime = (time) => {
 onMounted(async () => {
   if (isLoggedIn.value) {
     try {
-      console.log('头像：',userAvatar.value);
       await fetchNotifications();
       initWebSocket();
-//await store.dispatch('getUserInfo'); // 确保在 Vuex 中实现此 action
     } catch (error) {
-      console.error('Failed to fetch user info:', error);
+      console.error('Error during initialization:', error);
     }
   }
 });
 
 onBeforeUnmount(() => {
   if (ws) {
+    console.log('Closing WebSocket connection...');
     ws.close();
+    ws = null;
   }
 });
 
@@ -381,8 +422,9 @@ const handleSelect = (key, keyPath) => console.log(key, keyPath);
 .notification-badge :deep(.el-badge__content) {
   background-color: #f56c6c;
   z-index: 10;
+  top: 10px !important; /* 调整红点的垂直位置 */
+  right: 5px !important; /* 调整红点的水平位置 */
 }
-
 .notification-icon {
   width: 24px;
   height: 24px;
