@@ -1,4 +1,4 @@
-<script>
+<script setup>
 import Footer from './components/Footer.vue';
 import { RouterView } from 'vue-router';
 import Header from '@/components/header.vue'
@@ -6,76 +6,55 @@ import { ref, provide, watch,computed,onMounted} from 'vue';
 import {useRoute} from "vue-router";
 import { useStore } from 'vuex';
 import DraggableBubble from "@/components/DraggableBubble.vue";
-import { defineComponent } from 'vue'
 import { ElConfigProvider } from 'element-plus'
+import zhCn from 'element-plus/dist/locale/zh-cn.mjs'
 
+const store = useStore();
+const route = useRoute();
+const locale = ref(zhCn);
+const zIndex = ref(3000);
+const size = ref('default');
 
-export default {
-  name: 'App',
-  components: {
-    DraggableBubble,
-    Footer,
-    RouterView,
-    Header,
-    ElConfigProvider
-  },
-  setup() {
-    const store = useStore();
-    const route = useRoute();
-    const zIndex = 3000
-    const size = 'default'
+// 计算是否显示气泡
+const showBubble = computed(() => {
+  return route.path.startsWith('/healthCenter')
+})
 
-    // 计算是否显示气泡
-    const showBubble = computed(() => {
-      return route.path.startsWith('/healthCenter')
-    })
+const user = JSON.parse(localStorage.getItem("user"));
+console.log(user)
+const token = localStorage.getItem("token");
+console.log(token)
 
-    const user = JSON.parse(localStorage.getItem("user"));
-    console.log(user)
-    const token = localStorage.getItem("token");
-    console.log(token)
+// 定义 isLoggedIn 和 isAuthPage 状态
+const isLoggedIn = computed(() => store.state.user !== null);
+provide('isLoggedIn', isLoggedIn);
 
-    // 定义 isLoggedIn 和 isAuthPage 状态
-    const isLoggedIn = computed(() => store.state.user !== null);
-    provide('isLoggedIn', isLoggedIn);
+const isAuthPage = ref(route.path === '/login' || route.path === '/register');
 
-    const isAuthPage = ref(route.path === '/login' || route.path === '/register');
+// 初始化时恢复用户信息到store
+onMounted(() => {
+  const storedUser = JSON.parse(localStorage.getItem("user"));
+  if (storedUser && !store.state.user) {
+    console.log('Restoring user from localStorage:', storedUser);
+    store.commit('setUser', storedUser);
+  }
+})
 
-    // 初始化时恢复用户信息到store
-    onMounted(() => {
-      const storedUser = JSON.parse(localStorage.getItem("user"));
-      if (storedUser && !store.state.user) {
-        console.log('Restoring user from localStorage:', storedUser);
-        store.commit('setUser', storedUser);
-      }
-    })
+// 监听路由路径的变化，更新 isAuthPage 的值
+watch(
+    () => route.path,
+    (newPath) => {
+      isAuthPage.value = newPath === '/login' || newPath === '/register';
+      console.log('isAuthPage:', isAuthPage.value);
+    }
+);
 
-    // 监听路由路径的变化，更新 isAuthPage 的值
-    watch(
-        () => route.path,
-        (newPath) => {
-          isAuthPage.value = newPath === '/login' || newPath === '/register';
-          console.log('isAuthPage:', isAuthPage.value);
-        }
-    );
-
-    watch(
-        () => store.state.user,
-        (newUser) => {
-          console.log('User state changed:', newUser);
-        }
-    );
-
-    return {
-      isLoggedIn,
-      isAuthPage,
-      showBubble,
-      zIndex,
-      size
-    };
-  },
-};
-
+watch(
+    () => store.state.user,
+    (newUser) => {
+      console.log('User state changed:', newUser);
+    }
+);
 </script>
 
 <template>

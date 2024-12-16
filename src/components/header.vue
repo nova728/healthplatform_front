@@ -113,10 +113,11 @@
 </template>
 
 <script setup>
-import { ref, inject,computed,onMounted, onBeforeUnmount } from 'vue';
+import { ref, inject,computed,onMounted, onBeforeUnmount, watch } from 'vue';
 import { useRouter } from 'vue-router';
 import { useStore } from 'vuex';
 import { Bell } from 'lucide-vue-next';
+import { ElMessage } from 'element-plus';
 
 const router = useRouter();
 const store = useStore();
@@ -134,36 +135,99 @@ const hasUnread = computed(() => unreadCount.value > 0);
 
 // WebSocket 连接
 let ws = null;
+let reconnectAttempts = 0;
+const MAX_RECONNECT_ATTEMPTS = 5;
 
 // 初始化 WebSocket 连接
 const initWebSocket = () => {
   if (isLoggedIn.value && user.value?.id) {
-    ws = new WebSocket(`ws://localhost:8088/api/ws/notifications/${user.value.id}`);
-
-    ws.onopen = () => {
-      console.log('WebSocket connected');
-    };
-
-    ws.onmessage = (event) => {
-      const notification = JSON.parse(event.data);
-      notifications.value.unshift(notification);
-    };
-
-    ws.onerror = (error) => {
-      console.error('WebSocket error:', error);
-    };
+    try {
+      ws = new WebSocket(`ws://localhost:8088/api/ws/notifications/${user.value.id}`);
+      
+      ws.onopen = () => {
+        console.log('WebSocket 连接成功');
+        reconnectAttempts = 0; // 重置重连次数
+      };
+      
+      ws.onmessage = (event) => {
+        try {
+          const notification = JSON.parse(event.data);
+          notifications.value.unshift(notification);
+          // 更新未读消息数
+          unreadCount.value = notifications.value.filter(n => !n.isRead).length;
+        } catch (error) {
+          console.error('解析WebSocket消息失败:', error);
+        }
+      };
+      
+      ws.onerror = (error) => {
+        console.error('WebSocket错误:', error);
+        handleReconnect();
+      };
+      
+      ws.onclose = () => {
+        console.log('WebSocket连接关闭');
+        handleReconnect();
+      };
+    } catch (error) {
+      console.error('WebSocket初始化失败:', error);
+      handleReconnect();
+    }
   }
 };
 
+// 处理重连逻辑
+const handleReconnect = () => {
+  if (reconnectAttempts < MAX_RECONNECT_ATTEMPTS) {
+    reconnectAttempts++;
+    const delay = Math.min(1000 * Math.pow(2, reconnectAttempts), 30000); // 指数退避，最大30秒
+    console.log(`尝试第 ${reconnectAttempts} 次重连，延迟 ${delay}ms`);
+    
+    setTimeout(() => {
+      if (ws?.readyState === WebSocket.CLOSED) {
+        initWebSocket();
+      }
+    }, delay);
+  } else {
+    console.error('WebSocket重连失败，已达到最大重试次数');
+    ElMessage.error('通知服务连接失败，请刷新页面重试');
+  }
+};
+
+// 在组件卸载前关闭连接
+onBeforeUnmount(() => {
+  if (ws) {
+    ws.close();
+    ws = null;
+  }
+});
+
+// 在用户登录状态改变时重新初始化WebSocket
+watch(() => isLoggedIn.value, (newVal) => {
+  if (newVal) {
+    initWebSocket();
+  } else if (ws) {
+    ws.close();
+    ws = null;
+  }
+});
+
 // 获取通知列表
-const fetchNotifications = async () => {
+const fetchNotifications = async (retryCount = 3) => {
+  if (!user.value?.id) return;
+  
   try {
-    const response = await fetch(`http://localhost:8088/api/notifications/${user.value?.id}`);
+    const response = await fetch(`http://localhost:8088/api/notifications/${user.value.id}`);
     if (!response.ok) throw new Error('Failed to fetch notifications');
     const data = await response.json();
     notifications.value = data.data || [];
   } catch (error) {
     console.error('Error fetching notifications:', error);
+    if (retryCount > 0) {
+      setTimeout(() => {
+        fetchNotifications(retryCount - 1);
+      }, 3000);
+    }
   }
 };
 
@@ -222,12 +286,6 @@ onMounted(async () => {
     } catch (error) {
       console.error('Failed to fetch user info:', error);
     }
-  }
-});
-
-onBeforeUnmount(() => {
-  if (ws) {
-    ws.close();
   }
 });
 

@@ -2,26 +2,27 @@
   <div class="diet-page">
     <!-- 今日营养摄入概览 -->
     <div class="daily-overview">
-      <DailyNutrition />
+      <DailyNutrition 
+        ref="dailyNutritionRef"
+        :userId="store.state.user?.id" 
+        :date="selectedDate"
+      />
     </div>
     
     <!-- 下半部分内容 -->
     <div class="main-content">
       <!-- 左侧饮食记录 -->
       <div class="diet-record-section">
-        <DietRecord />
+        <DietRecord 
+          @nutrition-updated="handleNutritionUpdate"
+          @date-change="handleDateChange"
+        />
       </div>
       
-      <!-- 右侧日历和计划 -->
+      <!-- 右侧日历 -->
       <div class="right-section">
-        <!-- 日历组件 -->
         <div class="calendar-section">
           <NutritionCalendar />
-        </div>
-        
-        <!-- 计划板块 -->
-        <div class="plan-section">
-          <DietPlan />
         </div>
       </div>
     </div>
@@ -29,13 +30,38 @@
 </template>
 
 <script setup>
-import { ref } from 'vue'
-import DietRecord from './components/DietRecord.vue'
+import { ref, onMounted } from 'vue'
+import { useStore } from 'vuex'
 import DailyNutrition from './components/DailyNutrition.vue'
+import DietRecord from './components/DietRecord.vue'
 import NutritionCalendar from './components/NutritionCalendar.vue'
-import DietPlan from './components/DietPlan.vue'
 
-const activeTab = ref('record')
+const store = useStore()
+const dailyNutritionRef = ref(null)
+const selectedDate = ref(new Date().toISOString().split('T')[0])
+
+// 处理日期变化
+const handleDateChange = (date) => {
+  selectedDate.value = date
+  // 确保DailyNutrition组件更新
+  handleNutritionUpdate()
+}
+
+// 处理营养数据更新
+const handleNutritionUpdate = async () => {
+  try {
+    if (dailyNutritionRef.value?.fetchNutritionData) {
+      await dailyNutritionRef.value.fetchNutritionData()
+    }
+  } catch (error) {
+    console.error('更新营养数据失败:', error)
+  }
+}
+
+onMounted(() => {
+  // 组件挂载后初始化数据
+  handleNutritionUpdate()
+})
 </script>
 
 <style scoped>
