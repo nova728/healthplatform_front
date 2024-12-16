@@ -1,16 +1,20 @@
 <template>
   <div class="diet-record">
-    <!-- 日期选择器 -->
-    <DateSelector @date-change="handleDateChange" />
+    <!-- 固定在顶部的日期选择器 -->
+    <div class="date-selector-wrapper">
+      <DateSelector @date-change="handleDateChange" />
+    </div>
     
-    <!-- 餐次记录 -->
-    <MealSections 
-      :meals="dailyMeals"
-      :loading="loading"
-      :selected-date="selectedDate"
-      @add-food="showFoodSearch"
-      @delete-meal="handleDeleteMeal"
-    />
+    <!-- 可滚动的餐次记录 -->
+    <div class="meals-wrapper">
+      <MealSections 
+        :meals="dailyMeals"
+        :loading="loading"
+        :selected-date="selectedDate"
+        @add-food="showFoodSearch"
+        @delete-meal="handleDeleteMeal"
+      />
+    </div>
 
     <!-- 食物搜索对话框 -->
     <FoodSearchDialog
@@ -154,5 +158,22 @@ const emit = defineEmits(['nutrition-updated', 'date-change'])
 
 :deep(.el-date-editor) {
   width: 180px;
+}
+
+.diet-record-container {
+  display: flex;
+  flex-direction: column;
+  height: 100%;
+}
+
+.date-selector-wrapper {
+  flex-shrink: 0;
+  margin-bottom: 20px;
+}
+
+.meals-wrapper {
+  flex: 1;
+  overflow-y: auto;
+  min-height: 0;
 }
 </style>

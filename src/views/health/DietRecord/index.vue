@@ -1,6 +1,6 @@
 <template>
   <div class="diet-page">
-    <!-- 今日营养摄入概览 -->
+    <!-- 固定在顶部的营养概览 -->
     <div class="daily-overview">
       <DailyNutrition 
         ref="dailyNutritionRef"
@@ -9,8 +9,8 @@
       />
     </div>
     
-    <!-- 下半部分内容 -->
-    <div class="main-content">
+    <!-- 可滚动的主内容区域 -->
+    <div class="scrollable-content">
       <!-- 左侧饮食记录 -->
       <div class="diet-record-section">
         <DietRecord 
@@ -40,10 +40,12 @@ const store = useStore()
 const dailyNutritionRef = ref(null)
 const selectedDate = ref(new Date().toISOString().split('T')[0])
 
+const emit = defineEmits(['date-change', 'nutrition-updated'])
+
 // 处理日期变化
 const handleDateChange = (date) => {
   selectedDate.value = date
-  // 确保DailyNutrition组件更新
+  emit('date-change', date)
   handleNutritionUpdate()
 }
 
@@ -66,56 +68,51 @@ onMounted(() => {
 
 <style scoped>
 .diet-page {
-  padding: 20px;
-  height: 100%;
   display: flex;
   flex-direction: column;
-  gap: 20px;
+  height: 100%;
+  overflow: hidden;
 }
 
 .daily-overview {
+  flex-shrink: 0;
   background: #fff;
   border-radius: 8px;
   padding: 20px;
+  margin-bottom: 20px;
   box-shadow: 0 2px 12px 0 rgba(0,0,0,0.1);
 }
 
-.main-content {
+.scrollable-content {
+  flex: 1;
   display: flex;
   gap: 20px;
-  flex: 1;
-  min-height: 0; /* 防止内容溢出 */
+  overflow: hidden;
+  min-height: 0; /* 重要：允许flex子项收缩 */
 }
 
 .diet-record-section {
   flex: 2;
+  overflow-y: auto;
   background: #fff;
   border-radius: 8px;
   padding: 20px;
   box-shadow: 0 2px 12px 0 rgba(0,0,0,0.1);
-  overflow: auto;
 }
 
 .right-section {
   flex: 1;
+  overflow-y: auto;
   display: flex;
   flex-direction: column;
-  gap: 20px;
 }
 
-.calendar-section,
-.plan-section {
+.calendar-section {
   background: #fff;
   border-radius: 8px;
   padding: 20px;
   box-shadow: 0 2px 12px 0 rgba(0,0,0,0.1);
-}
-
-.calendar-section {
-  flex: 1;
-}
-
-.plan-section {
-  flex: 1;
+  height: 100%;
+  overflow-y: auto;
 }
 </style>

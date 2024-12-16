@@ -40,3 +40,9 @@ export function searchFood(query, page = 1, size = 20) {
     throw error
   })
 }
+
+export const getNutritionStats = (userId, range) => {
+  return axios.get(`http://localhost:8088/api/diet/${userId}/nutrition/stats`, {
+    params: { range }
+  })
+}
