@@ -115,6 +115,7 @@
           <div class="status normal">正常</div>
         </div>
       </div>
+
     </div>
   </div>
 </template>

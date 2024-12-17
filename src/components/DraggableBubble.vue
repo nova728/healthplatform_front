@@ -1,25 +1,44 @@
+<!-- DraggableBubble.vue -->
 <template>
-  <div
-      ref="bubbleRef"
-      class="floating-bubble"
-      :style="{
-      left: `${position.x}px`,
-      top: `${position.y}px`
-    }"
-      @mousedown.prevent="startDrag"
-      @click.stop="navigateToCompetition"
-  >
-    <el-icon class="bubble-icon"><Trophy /></el-icon>
+  <div class="bubble-wrapper">
+    <div
+        ref="bubbleRef"
+        class="floating-bubble"
+        :style="{
+          left: `${position.x}px`,
+          top: `${position.y}px`
+        }"
+        @mousedown.prevent="startDrag"
+        @click.stop="toggleBot"
+    >
+      <bot-icon class="bubble-icon"/>
+    </div>
+
+    <el-dialog
+        v-model="showBot"
+        title="健康助手"
+        width="800px"
+        class="bot-dialog"
+        :close-on-click-modal="false"
+        :show-close="true"
+        :modal="true"
+        :append-to-body="true"
+        destroy-on-close
+    >
+      <div class="bot-container">
+        <Bot />
+      </div>
+    </el-dialog>
   </div>
 </template>
 
 <script setup>
 import { ref, onMounted, onUnmounted, onBeforeUnmount } from 'vue'
-import { Trophy } from '@element-plus/icons-vue'
-import { useRouter } from 'vue-router'
+import { Bot as BotIcon } from 'lucide-vue-next'
+import Bot from '@/components/Bot.vue'
 
-const router = useRouter()
 const bubbleRef = ref(null)
+const showBot = ref(false)
 const position = ref({
   x: 20,
   y: Math.max(60, (window.innerHeight - 60) / 2)
@@ -29,10 +48,9 @@ let isDragging = false
 let startPos = { x: 0, y: 0 }
 let startOffset = { x: 0, y: 0 }
 
-// 开始拖动
+// Drag handlers
 const startDrag = (e) => {
-  if (e.button !== 0) return // 只响应左键点击
-  e.preventDefault() // 阻止默认事件
+  if (e.button !== 0) return
   isDragging = true
   startPos = {
     x: e.clientX,
@@ -47,19 +65,16 @@ const startDrag = (e) => {
   document.addEventListener('mouseup', stopDrag)
 }
 
-// 处理拖动
 const handleDrag = (e) => {
   if (!isDragging) return
 
   let newX = startOffset.x + (e.clientX - startPos.x)
   let newY = startOffset.y + (e.clientY - startPos.y)
 
-  // 获取窗口尺寸
   const windowWidth = window.innerWidth
   const windowHeight = window.innerHeight
-  const bubbleSize = 60 // 气泡的大小
+  const bubbleSize = 60
 
-  // 限制在窗口范围内
   newX = Math.max(0, Math.min(windowWidth - bubbleSize, newX))
   newY = Math.max(0, Math.min(windowHeight - bubbleSize, newY))
 
@@ -69,7 +84,6 @@ const handleDrag = (e) => {
   }
 }
 
-// 停止拖动
 const stopDrag = () => {
   if (!isDragging) return
 
@@ -77,38 +91,34 @@ const stopDrag = () => {
   document.removeEventListener('mousemove', handleDrag)
   document.removeEventListener('mouseup', stopDrag)
 
-  // 贴边吸附
   const windowWidth = window.innerWidth
   const windowHeight = window.innerHeight
   const bubbleSize = 60
-  const threshold = 50 // 吸附阈值
+  const threshold = 50
 
   const newPosition = { ...position.value }
 
   if (newPosition.x < threshold) {
-    newPosition.x = 0 // 左边
+    newPosition.x = 0
   } else if (newPosition.x > windowWidth - bubbleSize - threshold) {
-    newPosition.x = windowWidth - bubbleSize // 右边
+    newPosition.x = windowWidth - bubbleSize
   }
 
   if (newPosition.y < threshold) {
-    newPosition.y = 0 // 上边
+    newPosition.y = 0
   } else if (newPosition.y > windowHeight - bubbleSize - threshold) {
-    newPosition.y = windowHeight - bubbleSize // 下边
+    newPosition.y = windowHeight - bubbleSize
   }
 
   position.value = newPosition
 }
 
-// 导航到竞赛页面
-const navigateToCompetition = (e) => {
-  e.preventDefault()
+const toggleBot = (e) => {
   if (!isDragging) {
-    router.push('/healthCenter/health-competition')
+    showBot.value = !showBot.value
   }
 }
 
-// 处理窗口大小变化
 const handleResize = () => {
   const windowWidth = window.innerWidth
   const windowHeight = window.innerHeight
@@ -120,27 +130,23 @@ const handleResize = () => {
   }
 }
 
-// 清理函数
-const cleanup = () => {
-  document.removeEventListener('mousemove', handleDrag)
-  document.removeEventListener('mouseup', stopDrag)
-  window.removeEventListener('resize', handleResize)
-}
-
 onMounted(() => {
   window.addEventListener('resize', handleResize)
 })
 
 onBeforeUnmount(() => {
-  cleanup()
-})
-
-onUnmounted(() => {
-  cleanup()
+  document.removeEventListener('mousemove', handleDrag)
+  document.removeEventListener('mouseup', stopDrag)
+  window.removeEventListener('resize', handleResize)
 })
 </script>
 
 <style scoped>
+.bubble-wrapper {
+  position: relative;
+  z-index: 2000;
+}
+
 .floating-bubble {
   position: fixed;
   width: 60px;
@@ -174,4 +180,57 @@ onUnmounted(() => {
   transform: scale(0.95);
   box-shadow: 0 2px 8px rgba(0, 0, 0, 0.15);
 }
+
+:deep(.bot-dialog) {
+  border-radius: 16px;
+  overflow: hidden;
+}
+
+:deep(.bot-dialog .el-dialog__header) {
+  margin: 0;
+  padding: 16px;
+  border-bottom: 1px solid #e2e8f0;
+  background: #f8fafc;
+}
+
+
+:deep(.bot-dialog .el-dialog__body) {
+  padding: 0;
+  height: 800px;
+  overflow: hidden;
+}
+
+.bot-container {
+  height: 100%;
+  width: 100%;
+  display: flex;
+  flex-direction: column;
+}
+
+@media screen and (max-height: 900px) {
+  :deep(.bot-dialog .el-dialog__body) {
+    height: 700px;
+  }
+}
+
+@media screen and (max-height: 800px) {
+  :deep(.bot-dialog .el-dialog__body) {
+    height: 600px;
+  }
+}
+
+@media screen and (max-width: 1100px) {
+  :deep(.bot-dialog) {
+    width: 90vw !important;
+  }
+}
+
+:deep(.bot-dialog .el-dialog__headerbtn) {
+  top: 16px;
+}
+
+:deep(.bot-dialog .el-dialog) {
+  min-width: 600px;
+}
+
 </style>

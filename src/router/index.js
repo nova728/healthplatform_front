@@ -134,6 +134,11 @@ const routes = [
         path: '/my-articles',
         name: 'MyArticles',
         component:()=>import ('../views/MyArticles.vue'),
+    },
+    {
+        path: '/my-favorites',
+        name: 'MyFavorites',
+        component: () => import('../views/MyFavorites.vue')
     }
 ]
 

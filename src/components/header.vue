@@ -292,12 +292,18 @@ const userMenuItems = [
   },
   {
     index: '3-2',
+    label: '我的收藏',
+    icon: '/src/assets/images/icon/star.png',
+    action: () => router.push({ name: 'MyFavorites' })
+  },
+  {
+    index: '3-3',
     label: '个人中心',
     icon: '/src/assets/images/icon/person.png',
     action: () => router.push({ name: 'EditInformation' })
   },
   {
-    index: '3-3',
+    index: '3-4',
     label: '退出登录',
     icon: '/src/assets/images/icon/logout.png',
     action: () => store.dispatch('logoutUser')
