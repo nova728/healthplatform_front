@@ -92,9 +92,9 @@ const dialogVisible = ref(false)
 const selectedReport = ref(null)
 const currentUserId = computed(() => store.state.user?.id)
 
-// 添加 refresh 方法
-const refresh = () => {
-  fetchReports()
+const refresh = async () => {
+  dateRange.value = null
+  await fetchReports()
 }
 
 // 暴露方法给父组件
@@ -111,10 +111,18 @@ const fetchReports = async () => {
   
   loading.value = true
   try {
-    const [startDate, endDate] = dateRange.value || [
-      new Date(Date.now() - 30 * 24 * 60 * 60 * 1000),
-      new Date()
-    ]
+    let startDate, endDate
+    if (dateRange.value) {
+      [startDate, endDate] = dateRange.value
+    } else {
+      endDate = new Date()
+      startDate = new Date()
+      startDate.setTime(startDate.getTime() - 30 * 24 * 60 * 60 * 1000)
+    }
+    
+    // 确保 endDate 包含当天的最后一秒
+    endDate = new Date(endDate)
+    endDate.setHours(23, 59, 59, 999)
     
     const response = await getReportHistory(
       currentUserId.value,
@@ -123,11 +131,15 @@ const fetchReports = async () => {
     )
     
     if (response?.data) {
-      reports.value = response.data
+      reports.value = response.data.sort((a, b) => 
+        new Date(b.reportTime) - new Date(a.reportTime)
+      )
+      console.log('获取到的报告数据:', reports.value) // 添加日志
     }
   } catch (error) {
     console.error('获取报告历史失败:', error)
     ElMessage.error('获取报告历史失败')
+    reports.value = []
   } finally {
     loading.value = false
   }

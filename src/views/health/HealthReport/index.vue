@@ -2,13 +2,13 @@
   <div class="health-report-container">
     <el-tabs v-model="activeTab" class="demo-tabs">
       <el-tab-pane label="健康概览" name="overview">
-        <health-overview :report="latestReport" @refresh="fetchLatestReport"/>
+        <health-overview :report="latestReport" @refresh="handleRefresh"/>
       </el-tab-pane>
       <el-tab-pane label="详细指标" name="details">
         <health-metrics :report="latestReport"/>
       </el-tab-pane>
       <el-tab-pane label="历史报告" name="history">
-        <health-report-history/>
+        <health-report-history ref="historyRef" />
       </el-tab-pane>
     </el-tabs>
   </div>
@@ -32,10 +32,16 @@ const historyRef = ref(null)
 
 // 添加刷新处理方法
 const handleRefresh = async () => {
-  await fetchLatestReport()
-  // 如果历史记录组件存在，则刷新历史记录
-  if (historyRef.value) {
-    historyRef.value.refresh()
+  try {
+    await fetchLatestReport()
+    // 等待最新报告获取完成后再刷新历史记录
+    await nextTick()
+    if (historyRef.value) {
+      await historyRef.value.refresh()
+    }
+  } catch (error) {
+    console.error('刷新数据失败:', error)
+    ElMessage.error('刷新数据失败')
   }
 }
 
