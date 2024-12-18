@@ -19,6 +19,8 @@ import VueLazyload from 'vue-lazyload'
 import { createStore } from 'vuex';
 import createPersistedState from 'vuex-persistedstate';
 
+import * as ElementPlusIconsVue from '@element-plus/icons-vue'
+
 
 const vuetify = createVuetify({
     components,
@@ -43,4 +45,6 @@ app.use(router)
         attempt: 1
     })
     .mount('#app')
-
+for (const [key, component] of Object.entries(ElementPlusIconsVue)) {
+    app.component(key, component)
+}

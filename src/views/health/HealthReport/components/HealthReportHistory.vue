@@ -120,7 +120,7 @@ const fetchReports = async () => {
       startDate.setTime(startDate.getTime() - 30 * 24 * 60 * 60 * 1000)
     }
     
-    // 确保 endDate 包含当天的最后一秒
+    // 确保 endDate 包含当天的最���一秒
     endDate = new Date(endDate)
     endDate.setHours(23, 59, 59, 999)
     
@@ -227,12 +227,36 @@ onMounted(() => {
 
 <style lang="scss" scoped>
 .report-history {
-  .filter-section {
-    margin-bottom: 20px;
+  padding: 20px;
+  height: 100%;
+  overflow-y: auto;
+
+  // 美化滚动条
+  &::-webkit-scrollbar {
+    width: 8px;
   }
   
-  .el-tag {
-    margin-right: 5px;
+  &::-webkit-scrollbar-track {
+    background: #f1f1f1;
+    border-radius: 4px;
+  }
+  
+  &::-webkit-scrollbar-thumb {
+    background: #c0c4cc;
+    border-radius: 4px;
+    
+    &:hover {
+      background: #909399;
+    }
+  }
+
+  .filter-section {
+    margin-bottom: 20px;
+    position: sticky;
+    top: 0;
+    background: #fff;
+    z-index: 1;
+    padding: 10px 0;
   }
 }
 </style>

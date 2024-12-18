@@ -77,5 +77,35 @@ onMounted(() => {
 <style lang="scss" scoped>
 .health-report-container {
   padding: 20px;
+  height: calc(100vh - 120px); // 减去头部导航的高度
+  overflow-y: auto; // 添加垂直滚动条
+  
+  // 美化滚动条样式
+  &::-webkit-scrollbar {
+    width: 8px;
+  }
+  
+  &::-webkit-scrollbar-track {
+    background: #f1f1f1;
+    border-radius: 4px;
+  }
+  
+  &::-webkit-scrollbar-thumb {
+    background: #c0c4cc;
+    border-radius: 4px;
+    
+    &:hover {
+      background: #909399;
+    }
+  }
+}
+
+.demo-tabs {
+  height: 100%;
+  
+  :deep(.el-tabs__content) {
+    height: calc(100% - 40px);
+    overflow-y: auto;
+  }
 }
 </style>

@@ -81,8 +81,31 @@
   
   <style lang="scss" scoped>
   .health-metrics {
-    .mt-20 {
-      margin-top: 20px;
+    padding: 20px;
+    height: 100%;
+    overflow-y: auto;
+
+    // 美化滚动条
+    &::-webkit-scrollbar {
+      width: 8px;
+    }
+    
+    &::-webkit-scrollbar-track {
+      background: #f1f1f1;
+      border-radius: 4px;
+    }
+    
+    &::-webkit-scrollbar-thumb {
+      background: #c0c4cc;
+      border-radius: 4px;
+      
+      &:hover {
+        background: #909399;
+      }
+    }
+
+    .el-row {
+      margin-bottom: 20px;
     }
   }
   </style>
