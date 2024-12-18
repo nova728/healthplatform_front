@@ -41,8 +41,11 @@ export function searchFood(query, page = 1, size = 20) {
   })
 }
 
-export const getNutritionStats = (userId, range) => {
+export const getNutritionStats = (userId, startDate, endDate) => {
   return axios.get(`http://localhost:8088/api/diet/${userId}/nutrition/stats`, {
-    params: { range }
+    params: { 
+      startDate: startDate,
+      endDate: endDate
+    }
   })
 }

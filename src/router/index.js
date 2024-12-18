@@ -71,7 +71,7 @@ const routes = [
             {
                 path: 'health-report',
                 name: 'HealthReport',
-                component: () => import('../views/health/HealthReport.vue')
+                component: () => import('../views/health/HealthReport/index.vue')
             },
             // {
             //     path: 'health-competition',

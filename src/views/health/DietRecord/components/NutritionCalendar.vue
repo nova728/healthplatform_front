@@ -61,59 +61,49 @@
 
     <!-- 日历视图 -->
     <div v-show="currentView === 'calendar'" class="calendar-view">
-      <el-calendar v-model="currentDate">
-        <template #dateCell="{ data }">
-          <div class="calendar-cell" @click="showDayDetail(data)">
-            <span class="date-number">{{ data.day.split('-').slice(2).join('') }}</span>
-            <div class="nutrition-bars" v-if="getDayNutrition(data)">
-              <div class="bar-item">
-                <div class="bar-label">热量</div>
-                <div class="progress-bar-container">
-                  <div class="progress-bar-background"></div>
-                  <div 
-                    class="progress-bar-fill"
-                    :class="{ 'exceeded': getNutritionPercentage(data, 'calories') > 100 }"
-                    :style="{ width: `${Math.min(getNutritionPercentage(data, 'calories'), 100)}%` }"
-                  ></div>
+      <div class="calendar-wrapper">
+        <el-calendar v-model="currentDate">
+          <template #dateCell="{ data }">
+            <div class="calendar-cell">
+              <span class="date-number">{{ data.day.split('-').slice(-1)[0] }}</span>
+              <div class="nutrition-bars" v-if="nutritionCache[data.day]">
+                <div class="nutrition-bar">
+                  <span class="label">卡</span>
+                  <div class="progress-bar">
+                    <div class="progress-fill" 
+                      :style="getProgressStyle(nutritionCache[data.day].caloriesPercentage, '#409EFF')">
+                    </div>
+                  </div>
                 </div>
-              </div>
-              <div class="bar-item">
-                <div class="bar-label">碳水</div>
-                <div class="progress-bar-container">
-                  <div class="progress-bar-background"></div>
-                  <div 
-                    class="progress-bar-fill"
-                    :class="{ 'exceeded': getNutritionPercentage(data, 'carbs') > 100 }"
-                    :style="{ width: `${Math.min(getNutritionPercentage(data, 'carbs'), 100)}%` }"
-                  ></div>
+                <div class="nutrition-bar">
+                  <span class="label">碳</span>
+                  <div class="progress-bar">
+                    <div class="progress-fill" 
+                      :style="getProgressStyle(nutritionCache[data.day].carbsPercentage, '#67C23A')">
+                    </div>
+                  </div>
                 </div>
-              </div>
-              <div class="bar-item">
-                <div class="bar-label">蛋白</div>
-                <div class="progress-bar-container">
-                  <div class="progress-bar-background"></div>
-                  <div 
-                    class="progress-bar-fill"
-                    :class="{ 'exceeded': getNutritionPercentage(data, 'protein') > 100 }"
-                    :style="{ width: `${Math.min(getNutritionPercentage(data, 'protein'), 100)}%` }"
-                  ></div>
+                <div class="nutrition-bar">
+                  <span class="label">蛋</span>
+                  <div class="progress-bar">
+                    <div class="progress-fill" 
+                      :style="getProgressStyle(nutritionCache[data.day].proteinPercentage, '#E6A23C')">
+                    </div>
+                  </div>
                 </div>
-              </div>
-              <div class="bar-item">
-                <div class="bar-label">脂肪</div>
-                <div class="progress-bar-container">
-                  <div class="progress-bar-background"></div>
-                  <div 
-                    class="progress-bar-fill"
-                    :class="{ 'exceeded': getNutritionPercentage(data, 'fat') > 100 }"
-                    :style="{ width: `${Math.min(getNutritionPercentage(data, 'fat'), 100)}%` }"
-                  ></div>
+                <div class="nutrition-bar">
+                  <span class="label">脂</span>
+                  <div class="progress-bar">
+                    <div class="progress-fill" 
+                      :style="getProgressStyle(nutritionCache[data.day].fatPercentage, '#F56C6C')">
+                    </div>
+                  </div>
                 </div>
               </div>
             </div>
-          </div>
-        </template>
-      </el-calendar>
+          </template>
+        </el-calendar>
+      </div>
     </div>
 
     <!-- 日详情对话框 -->
@@ -206,21 +196,79 @@ const fetchStatisticsData = async () => {
 }
 
 // 获取营养完成百分比
-const getNutritionPercentage = (dateData, type) => {
-  const nutrition = nutritionCache.value[dateData.day]
+const getDayNutritionPercentage = (date, type) => {
+  const nutrition = nutritionCache.value[date]
   if (!nutrition) return 0
   
-  switch(type) {
-    case 'calories':
-      return Math.round(nutrition.caloriesPercentage || 0)
-    case 'carbs':
-      return Math.round(nutrition.carbsPercentage || 0)
-    case 'protein':
-      return Math.round(nutrition.proteinPercentage || 0)
-    case 'fat':
-      return Math.round(nutrition.fatPercentage || 0)
-    default:
-      return 0
+  const percentage = (() => {
+    switch(type) {
+      case 'calories':
+        return (nutrition.totalCalories / nutrition.recommendedCalories) * 100
+      case 'carbs':
+        return (nutrition.totalCarbs / nutrition.recommendedCarbs) * 100
+      case 'protein':
+        return (nutrition.totalProtein / nutrition.recommendedProtein) * 100
+      case 'fat':
+        return (nutrition.totalFat / nutrition.recommendedFat) * 100
+      default:
+        return 0
+    }
+  })()
+  
+  return Math.min(Math.round(percentage), 100)
+}
+
+// 缓存每日营养数据
+const loadMonthNutrition = async (year, month) => {
+  try {
+    const userId = store.state.user?.id
+    if (!userId) return
+
+    const response = await getNutritionData(userId, year, month)
+    
+    // 添加数据验证
+    if (!response?.data || !Array.isArray(response.data)) {
+      console.warn('营养数据格式不正确:', response)
+      return
+    }
+
+    const monthlyMap = new Map()
+    
+    // 使用普通循环替代 reduce
+    response.data.forEach(item => {
+      const monthKey = item.date.substring(0, 7) // YYYY-MM
+      if (!monthlyMap.has(monthKey)) {
+        monthlyMap.set(monthKey, {
+          actualSum: 0,
+          recommendedSum: 0,
+          count: 0
+        })
+      }
+      
+      const monthData = monthlyMap.get(monthKey)
+      monthData.actualSum += (item.actual || 0)
+      monthData.recommendedSum += (item.recommended || 0)
+      monthData.count++
+    })
+
+    // 转换数据格式
+    const processedData = {
+      dates: [],
+      actual: [],
+      recommended: []
+    }
+
+    monthlyMap.forEach((value, key) => {
+      processedData.dates.push(key)
+      processedData.actual.push(value.actualSum / value.count)
+      processedData.recommended.push(value.recommendedSum / value.count)
+    })
+
+    nutritionData.value = processedData
+    
+  } catch (error) {
+    console.error('加载月度营养数据失败:', error)
+    ElMessage.error('加载月度营养数据失败')
   }
 }
 
@@ -254,6 +302,13 @@ watch(dateRange, () => {
   fetchStatisticsData()
 })
 
+// 监听日期变化，加载对应月份的数据
+watch(() => currentDate.value, (newDate) => {
+  const year = newDate.getFullYear()
+  const month = newDate.getMonth() + 1
+  loadMonthNutrition(year, month)
+})
+
 // 显示日详情
 const showDayDetail = async (dateData) => {
   selectedDate.value = dateData.day
@@ -261,9 +316,15 @@ const showDayDetail = async (dateData) => {
   dialogVisible.value = true
 }
 
+
 // 组件挂载时获取数据
 onMounted(() => {
   fetchStatisticsData()
+})
+
+onMounted(() => {
+  const now = new Date()
+  loadMonthNutrition(now.getFullYear(), now.getMonth() + 1)
 })
 
 // 添加数据处理函数
@@ -346,6 +407,16 @@ const processedChartData = computed(() => {
     recommended: statsData.value[`recommended${activeNutrient.value.charAt(0).toUpperCase() + activeNutrient.value.slice(1)}`] || []
   })
 })
+
+const getProgressStyle = (percentage, color) => {
+  return {
+    width: `${Math.min(percentage, 100)}%`,
+    backgroundColor: color,
+    background: percentage > 100 ? 
+      `repeating-linear-gradient(45deg, ${color} 0%, ${color} 10%, ${color}88 10%, ${color}88 20%)` : 
+      color
+  }
+}
 </script>
 
 <style scoped>
@@ -414,23 +485,9 @@ const processedChartData = computed(() => {
   height: 100%;
 }
 
-.calendar-cell {
-  height: 100%;
-  display: flex;
-  flex-direction: column;
-  gap: 4px;
-  padding: 4px;
-}
-
 .date-number {
   font-size: 14px;
   color: #606266;
-}
-
-.nutrition-bars {
-  display: flex;
-  flex-direction: column;
-  gap: 2px;
 }
 
 .bar-item {
@@ -438,11 +495,6 @@ const processedChartData = computed(() => {
   align-items: center;
   gap: 4px;
   font-size: 12px;
-}
-
-.bar-label {
-  width: 30px;
-  color: #909399;
 }
 
 .progress-bar-container {
@@ -467,6 +519,73 @@ const processedChartData = computed(() => {
 
 .progress-bar-fill.exceeded {
   background-image: linear-gradient(45deg, #F56C6C 25%, #fab6b6 25%, #fab6b6 50%, #F56C6C 50%, #F56C6C 75%, #fab6b6 75%, #fab6b6);
+  background-size: 10px 10px;
+}
+
+.calendar-cell {
+  height: 100%;
+  padding: 4px;
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+}
+
+.date-number {
+  font-size: 12px;
+  color: #606266;
+}
+
+.nutrition-bars {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+}
+
+.nutrition-bar {
+  display: flex;
+  align-items: center;
+  gap: 4px;
+  height: 16px;
+}
+
+.bar-label {
+  width: 16px;
+  font-size: 12px;
+  color: #909399;
+  text-align: center;
+}
+
+.bar-wrapper {
+  flex: 1;
+  height: 4px;
+  position: relative;
+}
+
+.bar-bg {
+  position: absolute;
+  width: 100%;
+  height: 100%;
+  background-color: #EBEEF5;
+  border-radius: 2px;
+}
+
+.bar-fill {
+  position: absolute;
+  height: 100%;
+  border-radius: 2px;
+  transition: width 0.3s ease;
+}
+
+/* 超出100%时的样式 */
+.bar-fill.exceeded {
+  background-image: linear-gradient(45deg, 
+    rgba(245, 108, 108, 1) 25%, 
+    rgba(245, 108, 108, 0.7) 25%, 
+    rgba(245, 108, 108, 0.7) 50%, 
+    rgba(245, 108, 108, 1) 50%, 
+    rgba(245, 108, 108, 1) 75%, 
+    rgba(245, 108, 108, 0.7) 75%, 
+    rgba(245, 108, 108, 0.7));
   background-size: 10px 10px;
 }
 </style>

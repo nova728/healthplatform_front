@@ -47,10 +47,10 @@
           <div class="card-header">
             <span>健康指标趋势</span>
             <el-radio-group v-model="selectedMetric" size="small">
-              <el-radio-button label="weight">体重</el-radio-button>
-              <el-radio-button label="sleep">睡眠</el-radio-button>
-              <el-radio-button label="steps">步数</el-radio-button>
-              <el-radio-button label="heartRate">心率</el-radio-button>
+              <el-radio-button value="weight">体重</el-radio-button>
+              <el-radio-button value="sleep">睡眠</el-radio-button>
+              <el-radio-button value="steps">步数</el-radio-button>
+              <el-radio-button value="heartRate">心率</el-radio-button>
             </el-radio-group>
           </div>
         </template>
