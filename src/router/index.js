@@ -139,6 +139,11 @@ const routes = [
         path: '/my-favorites',
         name: 'MyFavorites',
         component: () => import('../views/MyFavorites.vue')
+    },
+    {
+        path: '/exercise-competition',
+        name: 'ExerciseCompetition',
+        component: () => import('../views/health/ExerciseAchievement.vue')
     }
 ]
 

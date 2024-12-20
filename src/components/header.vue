@@ -36,10 +36,11 @@
       </template>
 
       <template v-else>
-        <el-menu-item index="4">
-          <el-button type="primary" class="record-button">
-            <img src="/src/assets/images/icon/记录.png" alt="Edit Icon" class="icon-img" />
-            <span>指标记录</span>
+        <!-- 排行榜入口 -->
+        <el-menu-item index="rank" @click="navigateTo('ExerciseCompetition')" class="rank-item">
+          <el-button type="primary" class="rank-button">
+            <el-icon><Trophy /></el-icon>
+            <span>排行榜</span>
           </el-button>
         </el-menu-item>
 
@@ -83,7 +84,7 @@
           </el-popover>
         </el-menu-item>
 
-        <el-sub-menu index="3" class="user-menu">
+        <el-sub-menu index="user" class="user-menu">
           <template #title>
             <div class="user-info">
               <img
@@ -117,6 +118,7 @@ import { ref, inject,computed,onMounted, onBeforeUnmount } from 'vue';
 import { useRouter } from 'vue-router';
 import { useStore } from 'vuex';
 import { Bell } from 'lucide-vue-next';
+import { Trophy } from '@element-plus/icons-vue'
 import dayjs from 'dayjs';
 
 const router = useRouter();
@@ -315,6 +317,26 @@ const handleSelect = (key, keyPath) => console.log(key, keyPath);
 </script>
 
 <style scoped>
+.rank-button {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 8px 16px;
+  border-radius: 8px;
+  transition: all 0.3s ease;
+}
+
+.rank-button:hover {
+  transform: translateY(-2px);
+  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.1);
+}
+
+.rank-item {
+  display: flex;
+  align-items: center;
+  margin-right: 16px;
+}
+
 .el-menu-demo {
   display: flex;
   align-items: center;

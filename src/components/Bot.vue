@@ -15,18 +15,41 @@ const chatHistory = ref([
   }
 ])
 
+// 统一的API调用函数
+const callChatAPI = async (message, retryCount = 0) => {
+  try {
+    const response = await axios.post('http://localhost:8088/api/chat/send',
+        { message },
+        {
+          timeout: 30000,  // 30秒超时
+          headers: {
+            'Content-Type': 'application/json'
+          }
+        }
+    );
+    return response.data.response;
+  } catch (error) {
+    console.error('API调用失败:', error);
+
+    // 如果是QPS限制错误并且还有重试次数，等待后重试
+    if (error.response?.data?.includes('qps request limit reached') && retryCount < 2) {
+      await new Promise(resolve => setTimeout(resolve, 2000)); // 等待2秒
+      return callChatAPI(message, retryCount + 1);
+    }
+
+    throw error;
+  }
+}
+
 // 获取健康建议
 const getHealthAdvice = async (userHealthData) => {
   try {
-    // 使用后端API发送健康数据获取建议
-    const response = await axios.post('http://localhost:8088/api/chat/send', {
-      message: generatePrompt(userHealthData)
-    })
-
-    return response.data.response
+    const prompt = generatePrompt(userHealthData);
+    return await callChatAPI(prompt);
   } catch (error) {
-    console.error('Failed to get health advice:', error)
-    throw error
+    console.error('获取健康建议失败:', error);
+    ElMessage.error('获取健康建议失败，请稍后重试');
+    throw error;
   }
 }
 
@@ -40,64 +63,73 @@ const generatePrompt = (healthData) => {
     请提供具体的健康建议和改善方案。`
 }
 
+// 自动滚动到底部
+const scrollToBottom = () => {
+  const chatContainer = document.querySelector('.chat-container');
+  if (chatContainer) {
+    setTimeout(() => {
+      chatContainer.scrollTop = chatContainer.scrollHeight;
+    }, 100);
+  }
+}
+
 // 发送消息
 const sendMessage = async () => {
-  if (!message.value.trim()) return
+  if (!message.value.trim() || loading.value) return;
 
+  const userMessage = message.value;
   chatHistory.value.push({
     type: 'user',
-    content: message.value
-  })
+    content: userMessage
+  });
 
-  const userMessage = message.value
-  message.value = ''
-  loading.value = true
+  message.value = '';
+  loading.value = true;
+  scrollToBottom();
 
   try {
-    const response = await axios.post('http://localhost:8088/api/chat/send', {
-      message: userMessage
-    })
-
+    const response = await callChatAPI(userMessage);
     chatHistory.value.push({
       type: 'assistant',
-      content: response.data.response
-    })
+      content: response
+    });
+    scrollToBottom();
   } catch (error) {
-    console.error('Failed to get response:', error)
-    ElMessage.error('获取回复失败，请稍后重试')
+    ElMessage.error('获取回复失败，请稍后重试');
   } finally {
-    loading.value = false
+    loading.value = false;
   }
 }
 
 // 监听回车键
 const handleKeyPress = (e) => {
   if (e.key === 'Enter' && !e.shiftKey) {
-    e.preventDefault()
-    sendMessage()
+    e.preventDefault();
+    sendMessage();
   }
 }
 
 // 获取初始健康建议
 onMounted(async () => {
+  const userId = store.state.user?.id;
+  if (!userId) return;
+
   try {
-    const userId = store.state.user?.id
-    if (!userId) return
-
-    const response = await axios.get(`http://localhost:8088/api/health/${userId}/history`)
-    if (response.data && response.data.length > 0) {
-      const healthData = response.data[0]
-      const advice = await getHealthAdvice(healthData)
-
-      chatHistory.value.push({
-        type: 'assistant',
-        content: advice
-      })
+    const response = await axios.get(`http://localhost:8088/api/health/${userId}/history`);
+    if (response.data?.[0]) {
+      const advice = await getHealthAdvice(response.data[0]);
+      if (advice) {
+        chatHistory.value.push({
+          type: 'assistant',
+          content: advice
+        });
+        scrollToBottom();
+      }
     }
   } catch (error) {
-    console.error('Failed to get initial health advice:', error)
+    console.error('获取初始健康建议失败:', error);
   }
-})
+});
 </script>
 
 <template>
