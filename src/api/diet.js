@@ -49,3 +49,10 @@ export const getNutritionStats = (userId, startDate, endDate) => {
     }
   })
 }
+
+// 获取月度营养数据
+export function getMonthlyNutrition(userId, year, month) {
+  return axios.get(`http://localhost:8088/api/diet/${userId}/nutrition/monthly`, {
+    params: { year, month }
+  })
+}
