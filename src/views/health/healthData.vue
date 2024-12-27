@@ -372,42 +372,240 @@ const navigateTo = (route) => {
   height: 100%;
   overflow-y: auto;
   box-sizing: border-box;
-  padding-right: 8px;
+  padding: 24px;
+  background: linear-gradient(135deg, #f5f7fa 0%, #eef2f7 100%);
+}
+
+.health-data h2 {
+  font-size: 32px;
+  font-weight: 700;
+  color: #1a1f36;
+  margin-bottom: 24px;
+  padding-left: 4px;
 }
 
 .data-grid {
   display: grid;
   grid-template-columns: repeat(3, 1fr);
-  gap: 20px;
-  padding: 20px;
+  gap: 24px;
+  padding: 4px;
   min-height: min-content;
 }
 
 .health-data::-webkit-scrollbar {
   width: 6px;
+  background: transparent;
+}
+
+.health-data::-webkit-scrollbar-thumb {
+  background: rgba(0, 0, 0, 0.1);
+  border-radius: 3px;
 }
 
 .data-card {
   background: white;
-  border-radius: 16px;
-  padding: 20px;
-  box-shadow: 0 2px 12px rgba(0, 0, 0, 0.08);
-  transition: all 0.3s ease;
+  border-radius: 20px;
+  padding: 24px;
+  box-shadow: 0 4px 20px rgba(0, 0, 0, 0.06);
+  transition: all 0.4s cubic-bezier(0.4, 0, 0.2, 1);
   cursor: pointer;
+  position: relative;
+  overflow: hidden;
+}
+
+.data-card::before {
+  content: '';
+  position: absolute;
+  top: 0;
+  left: 0;
+  right: 0;
+  height: 4px;
+  background: linear-gradient(90deg, transparent, rgba(64, 158, 255, 0.1), transparent);
+  transform: translateX(-100%);
+  transition: transform 0.6s ease;
+}
+
+.data-card:hover::before {
+  transform: translateX(100%);
+}
+
+.data-card:hover {
+  transform: translateY(-6px);
+  box-shadow: 0 8px 30px rgba(0, 0, 0, 0.12);
+}
+
+.data-card.large {
+  grid-column: span 2;
+  grid-row: span 2;
+  background: linear-gradient(135deg, #ffffff 0%, #f8faff 100%);
+}
+
+.data-card.medium {
+  grid-column: span 1;
+  grid-row: span 2;
+  background: linear-gradient(135deg, #ffffff 0%, #fafbff 100%);
 }
 
 .data-card.vertical {
   grid-row: span 2;
+  grid-column: span 1;
+  display: flex;
+  flex-direction: column;
+  background: linear-gradient(135deg, #ffffff 0%, #f9faff 100%);
+  height: calc(100% + 24px + 40%); /* 计算两个卡片高度加间距 */
+}
+
+.card-header {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  margin-bottom: 20px;
+  color: #1a1f36;
+}
+
+.card-icon {
+  width: 28px;
+  height: 28px;
+  stroke-width: 1.75;
+  color: #409EFF;
+  transition: all 0.3s ease;
+}
+
+.data-card:hover .card-icon {
+  transform: scale(1.1);
+  color: #66b1ff;
+}
+
+.card-content {
+  height: calc(100% - 48px);
   display: flex;
   flex-direction: column;
 }
 
+/* 心率模块样式 */
+.current-value {
+  font-size: 56px;
+  font-weight: 700;
+  color: #1a1f36;
+  line-height: 1.2;
+  letter-spacing: -0.02em;
+}
+
+.unit {
+  color: #8792a2;
+  margin-top: 4px;
+  font-size: 15px;
+  font-weight: 500;
+}
+
+.chart {
+  flex: 1;
+  margin-top: 24px;
+  position: relative;
+  min-height: 200px;
+  border-radius: 12px;
+  background: linear-gradient(180deg, rgba(64, 158, 255, 0.04) 0%, transparent 100%);
+}
+
+/* 睡眠模块样式 */
+.sleep-stats {
+  text-align: center;
+  padding: 16px 0;
+}
+
+.sleep-duration {
+  font-size: 40px;
+  font-weight: 700;
+  color: #1a1f36;
+  line-height: 1.2;
+}
+
+.sleep-quality {
+  color: #67c23a;
+  margin-top: 8px;
+  font-weight: 600;
+  font-size: 15px;
+}
+
+.sleep-phases {
+  display: flex;
+  height: 8px;
+  border-radius: 6px;
+  overflow: hidden;
+  margin-top: 24px;
+  box-shadow: inset 0 2px 4px rgba(0, 0, 0, 0.04);
+}
+
+.deep {
+  background: linear-gradient(90deg, #409EFF, #66b1ff);
+  transition: width 0.3s ease;
+}
+
+.light {
+  background: linear-gradient(90deg, #67c23a, #85ce61);
+  transition: width 0.3s ease;
+}
+
+.rem {
+  background: linear-gradient(90deg, #e6a23c, #ebb563);
+  transition: width 0.3s ease;
+}
+
+/* 步数模块样式 */
+.steps-count {
+  font-size: 44px;
+  font-weight: 700;
+  color: #1a1f36;
+  text-align: center;
+  margin-bottom: 24px;
+  line-height: 1.2;
+}
+
+.steps-progress {
+  padding: 0 12px;
+}
+
+/* 血压模块样式 */
+.bp-values {
+  font-size: 40px;
+  font-weight: 700;
+  color: #1a1f36;
+  text-align: center;
+  line-height: 1.2;
+}
+
+.separator {
+  color: #8792a2;
+  margin: 0 8px;
+  font-weight: 400;
+}
+
+.status {
+  text-align: center;
+  margin-top: 16px;
+  padding: 6px 16px;
+  border-radius: 20px;
+  font-size: 14px;
+  font-weight: 600;
+  display: inline-block;
+  position: relative;
+  left: 50%;
+  transform: translateX(-50%);
+}
+
+.status.normal {
+  background: linear-gradient(135deg, #f0f9eb, #e7f6d9);
+  color: #67c23a;
+}
+
+/* 身高模块样式 */
 .height-content {
   display: flex;
   flex-direction: column;
   justify-content: space-between;
   height: 100%;
   padding: 20px 0;
+  min-height: calc(100% - 100px); /* 减去 card-header 的高度 */
 }
 
 .height-display {
@@ -415,9 +613,10 @@ const navigateTo = (route) => {
 }
 
 .height-value {
-  font-size: 36px;
-  font-weight: 600;
-  color: #303133;
+  font-size: 44px;
+  font-weight: 700;
+  color: #1a1f36;
+  line-height: 1.2;
 }
 
 .height-visual {
@@ -425,7 +624,10 @@ const navigateTo = (route) => {
   display: flex;
   justify-content: center;
   align-items: center;
-  margin-top: 20px;
+  margin-top: 24px;
+  padding: 20px 0;
+  height: 100%;
+  min-height: 240px; /* 确保有足够的高度显示标尺 */
 }
 
 .ruler {
@@ -434,18 +636,19 @@ const navigateTo = (route) => {
   background: #f0f2f5;
   border-radius: 4px;
   position: relative;
+  box-shadow: inset 0 2px 4px rgba(0, 0, 0, 0.04);
 }
 
 .marker {
   position: absolute;
   left: 50%;
   transform: translateX(-50%);
-  width: 16px;
-  height: 16px;
+  width: 20px;
+  height: 20px;
   background: #409EFF;
   border-radius: 50%;
-  box-shadow: 0 2px 4px rgba(0, 0, 0, 0.1);
-  transition: bottom 0.3s ease;
+  box-shadow: 0 2px 8px rgba(64, 158, 255, 0.4);
+  transition: all 0.4s cubic-bezier(0.4, 0, 0.2, 1);
 }
 
 .ruler::before {
@@ -457,166 +660,22 @@ const navigateTo = (route) => {
   background: #e4e7ed;
 }
 
-.data-card:hover {
-  transform: translateY(-4px);
-  box-shadow: 0 4px 20px rgba(0, 0, 0, 0.12);
+/* 响应式布局优化 */
+@media (max-width: 1400px) {
+  .data-grid {
+    grid-template-columns: repeat(3, 1fr);
+    gap: 20px;
+  }
 }
 
-.data-card.large {
-  grid-column: span 2;
-  grid-row: span 2;
-}
-
-.data-card.medium {
-  grid-column: span 1;
-  grid-row: span 2;
-}
-
-.data-card.small {
-  grid-column: span 1;
-  grid-row: span 1;
-}
-
-.card-header {
-  display: flex;
-  align-items: center;
-  gap: 8px;
-  margin-bottom: 16px;
-  color: #606266;
-}
-
-.card-content {
-  height: calc(100% - 40px);
-  display: flex;
-  flex-direction: column;
-}
-
-/* 心率模块样式 */
-.current-value {
-  font-size: 48px;
-  font-weight: 600;
-  color: #303133;
-}
-
-.unit {
-  color: #909399;
-  margin-top: 4px;
-}
-
-.chart {
-  flex: 1;
-  margin-top: 20px;
-}
-
-/* 睡眠模块样式 */
-.sleep-stats {
-  text-align: center;
-}
-
-.sleep-duration {
-  font-size: 32px;
-  font-weight: 600;
-  color: #303133;
-}
-
-.sleep-quality {
-  color: #67c23a;
-  margin-top: 8px;
-}
-
-.sleep-phases {
-  display: flex;
-  height: 8px;
-  border-radius: 4px;
-  overflow: hidden;
-  margin-top: 20px;
-}
-
-.deep { background: #409EFF; }
-.light { background: #67c23a; }
-.rem { background: #e6a23c; }
-
-/* 步数模块样式 */
-.steps-count {
-  font-size: 36px;
-  font-weight: 600;
-  color: #303133;
-  text-align: center;
-  margin-bottom: 20px;
-}
-
-/* 血压模块样式 */
-.bp-values {
-  font-size: 32px;
-  font-weight: 600;
-  color: #303133;
-  text-align: center;
-}
-
-.separator {
-  color: #909399;
-  margin: 0 8px;
-}
-
-.status {
-  text-align: center;
-  margin-top: 12px;
-  padding: 4px 12px;
-  border-radius: 12px;
-  font-size: 14px;
-}
-
-.status.normal {
-  background: #f0f9eb;
-  color: #67c23a;
-}
-
-.card-header {
-  display: flex;
-  align-items: center;
-  gap: 8px;
-  margin-bottom: 16px;
-  color: #606266;
-}
-
-.card-icon {
-  width: 24px;
-  height: 24px;
-  stroke-width: 2;
-}
-
-.data-card:hover .card-icon {
-  color: #409EFF;
-}
-
-.chart {
-  flex: 1;
-  margin-top: 20px;
-  min-height: 200px;
-  position: relative; /* 添加这行 */
-}
-
-.card-content {
-  height: calc(100% - 40px);
-  display: flex;
-  flex-direction: column;
-  min-height: 300px;
-}
-
-.data-card.large {
-  grid-column: span 2;
-  grid-row: span 2;
-  min-height: 400px;
-}
-
-/* 响应式布局 */
 @media (max-width: 1200px) {
   .data-grid {
     grid-template-columns: repeat(2, 1fr);
+    gap: 20px;
   }
 
   .data-card.large {
-    grid-column: span 2;
+    grid-column: span 1;
   }
 
   .data-card.vertical {
@@ -625,8 +684,13 @@ const navigateTo = (route) => {
 }
 
 @media (max-width: 768px) {
+  .health-data {
+    padding: 16px;
+  }
+
   .data-grid {
     grid-template-columns: 1fr;
+    gap: 16px;
   }
 
   .data-card.large,
@@ -635,6 +699,16 @@ const navigateTo = (route) => {
   .data-card.small {
     grid-column: span 1;
     grid-row: span 1;
+    min-height: auto;
+  }
+
+  .card-content {
+    min-height: auto;
+  }
+
+  .health-data h2 {
+    font-size: 24px;
+    margin-bottom: 16px;
   }
 }
 </style>

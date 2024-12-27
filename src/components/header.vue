@@ -36,10 +36,11 @@
       </template>
 
       <template v-else>
-        <el-menu-item index="4">
-          <el-button type="primary" class="record-button">
-            <img src="/src/assets/images/icon/记录.png" alt="Edit Icon" class="icon-img" />
-            <span>指标记录</span>
+        <!-- 排行榜入口 -->
+        <el-menu-item index="rank" @click="navigateTo('ExerciseCompetition')" class="rank-item">
+          <el-button type="primary" class="rank-button">
+            <el-icon><Trophy /></el-icon>
+            <span>排行榜</span>
           </el-button>
         </el-menu-item>
 
@@ -83,7 +84,7 @@
           </el-popover>
         </el-menu-item>
 
-        <el-sub-menu index="3" class="user-menu">
+        <el-sub-menu index="user" class="user-menu">
           <template #title>
             <div class="user-info">
               <img
@@ -113,12 +114,12 @@
 </template>
 
 <script setup>
-import { ref, inject,computed,onMounted, onBeforeUnmount, watch } from 'vue';
+import { ref, inject,computed,onMounted, onBeforeUnmount } from 'vue';
 import { useRouter } from 'vue-router';
 import { useStore } from 'vuex';
 import { Bell } from 'lucide-vue-next';
+import { Trophy } from '@element-plus/icons-vue'
 import dayjs from 'dayjs';
-import { ElMessage } from 'element-plus';
 
 const router = useRouter();
 const store = useStore();
@@ -198,21 +199,14 @@ const handleReconnect = () => {
 };
 
 // 获取通知列表
-const fetchNotifications = async (retryCount = 3) => {
-  if (!user.value?.id) return;
-  
+const fetchNotifications = async () => {
   try {
-    const response = await fetch(`http://localhost:8088/api/notifications/${user.value.id}`);
+    const response = await fetch(`http://localhost:8088/api/notifications/${user.value?.id}`);
     if (!response.ok) throw new Error('Failed to fetch notifications');
     const data = await response.json();
     notifications.value = data.data || [];
   } catch (error) {
     console.error('Error fetching notifications:', error);
-    if (retryCount > 0) {
-      setTimeout(() => {
-        fetchNotifications(retryCount - 1);
-      }, 3000);
-    }
   }
 };
 
@@ -323,6 +317,26 @@ const handleSelect = (key, keyPath) => console.log(key, keyPath);
 </script>
 
 <style scoped>
+.rank-button {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 8px 16px;
+  border-radius: 8px;
+  transition: all 0.3s ease;
+}
+
+.rank-button:hover {
+  transform: translateY(-2px);
+  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.1);
+}
+
+.rank-item {
+  display: flex;
+  align-items: center;
+  margin-right: 16px;
+}
+
 .el-menu-demo {
   display: flex;
   align-items: center;

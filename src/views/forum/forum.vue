@@ -171,7 +171,7 @@
 <script setup>
 import { ref, onMounted, computed } from 'vue'
 import HotRanking from '@/components/HotRanking.vue'
-import RecommendedArticles from '../components/RecommendedArticles.vue'
+import RecommendedArticles from '../../components/RecommendedArticles.vue'
 import { useForumStore } from '@/store/forumStore.js'
 import {
   Search,
@@ -219,7 +219,7 @@ const hotArticlesError = ref('')
 const preloadPost = (postId) => {
   const link = document.createElement('link')
   link.rel = 'prefetch'
-  link.href = `/api/articles/${postId}`
+  link.href = `http://localhost:8088/api/articles/${postId}`
   document.head.appendChild(link)
 }
 

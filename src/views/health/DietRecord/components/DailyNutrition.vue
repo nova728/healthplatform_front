@@ -5,39 +5,39 @@
       <div class="nutrition-item">
         <span class="label">热量</span>
         <span class="value">{{ totalCalories }}kcal</span>
-        <el-progress 
-          :percentage="nutritionData.caloriesPercentage" 
-          :color="getProgressColor(nutritionData.caloriesPercentage)"
+        <el-progress
+            :percentage="nutritionData.caloriesPercentage"
+            :color="getProgressColor(nutritionData.caloriesPercentage)"
         />
         <span class="recommended">目标: {{ nutritionData.recommendedCalories }}kcal</span>
       </div>
-      
+
       <div class="nutrition-item">
         <span class="label">碳水化合物</span>
         <span class="value">{{ totalCarbs }}g</span>
-        <el-progress 
-          :percentage="nutritionData.carbsPercentage"
-          :color="getProgressColor(nutritionData.carbsPercentage)"
+        <el-progress
+            :percentage="nutritionData.carbsPercentage"
+            :color="getProgressColor(nutritionData.carbsPercentage)"
         />
         <span class="recommended">目标: {{ nutritionData.recommendedCarbs }}g</span>
       </div>
-      
+
       <div class="nutrition-item">
         <span class="label">蛋白质</span>
         <span class="value">{{ totalProtein }}g</span>
-        <el-progress 
-          :percentage="nutritionData.proteinPercentage"
-          :color="getProgressColor(nutritionData.proteinPercentage)"
+        <el-progress
+            :percentage="nutritionData.proteinPercentage"
+            :color="getProgressColor(nutritionData.proteinPercentage)"
         />
         <span class="recommended">目标: {{ nutritionData.recommendedProtein }}g</span>
       </div>
-      
+
       <div class="nutrition-item">
         <span class="label">脂肪</span>
         <span class="value">{{ totalFat }}g</span>
-        <el-progress 
-          :percentage="nutritionData.fatPercentage"
-          :color="getProgressColor(nutritionData.fatPercentage)"
+        <el-progress
+            :percentage="nutritionData.fatPercentage"
+            :color="getProgressColor(nutritionData.fatPercentage)"
         />
         <span class="recommended">目标: {{ nutritionData.recommendedFat }}g</span>
       </div>
@@ -84,11 +84,11 @@ const fetchNutritionData = async () => {
     console.warn('No userId provided')
     return
   }
-  
+
   loading.value = true
   try {
     const { data } = await getDailyNutrition(props.userId, props.date)
-    
+
     if (data) {
       nutritionData.value = data
       // 确保数据格式化和默认值处理
@@ -138,43 +138,105 @@ watch(() => props.date, (newDate) => {
 
 <style scoped>
 .daily-nutrition {
-  padding: 20px;
-  background: #fff;
-  border-radius: 8px;
-  box-shadow: 0 2px 12px 0 rgba(0,0,0,0.1);
+  position: relative;
+  overflow: hidden;
+}
+
+.daily-nutrition::before {
+  content: '';
+  position: absolute;
+  top: 0;
+  left: 0;
+  right: 0;
+  height: 3px;
+  background: linear-gradient(90deg, #67C23A, #E6A23C, #F56C6C);
+  opacity: 0.8;
+}
+
+h3 {
+  font-size: 1.5rem;
+  color: #2c3e50;
+  margin-bottom: 1.5rem;
+  font-weight: 600;
+  background: linear-gradient(120deg, #2c3e50, #3498db);
+  -webkit-background-clip: text;
+  -webkit-text-fill-color: transparent;
 }
 
 .nutrition-grid {
   display: grid;
   grid-template-columns: repeat(4, 1fr);
-  gap: 20px;
-  margin-top: 20px;
+  gap: 32px;
+  padding: 16px;
+  opacity: 0;
+  animation: fadeIn 0.6s ease forwards 0.3s;
 }
 
 .nutrition-item {
-  display: flex;
-  flex-direction: column;
-  align-items: center;
-  gap: 8px;
+  background: linear-gradient(145deg, #ffffff, #f0f0f0);
+  padding: 24px;
+  border-radius: 20px;
+  box-shadow: 8px 8px 16px #d1d9e6, -8px -8px 16px #ffffff;
+  transition: all 0.4s cubic-bezier(0.4, 0, 0.2, 1);
+}
+
+.nutrition-item:hover {
+  transform: translateY(-6px) scale(1.02);
+  box-shadow: 12px 12px 20px #d1d9e6, -12px -12px 20px #ffffff;
 }
 
 .label {
-  color: #606266;
-  font-size: 14px;
+  font-size: 1rem;
+  color: #4a5568;
+  margin-bottom: 12px;
+  display: block;
+  font-weight: 500;
 }
 
 .value {
-  font-size: 24px;
-  font-weight: bold;
-  color: #303133;
+  font-size: 2rem;
+  font-weight: 700;
+  background: linear-gradient(120deg, #3b82f6, #10b981);
+  -webkit-background-clip: text;
+  -webkit-text-fill-color: transparent;
+  margin: 12px 0;
+  display: block;
+  transition: all 0.3s ease;
 }
 
 .recommended {
+  font-size: 0.8rem;
   color: #909399;
-  font-size: 12px;
+  margin-top: 8px;
+  display: block;
+  text-align: right;
 }
 
-:deep(.el-progress) {
-  width: 100%;
+:deep(.el-progress-bar__outer) {
+  border-radius: 6px;
+  background: rgba(144,147,153,0.1);
+}
+
+:deep(.el-progress-bar__inner) {
+  border-radius: 6px;
+  transition: width 0.8s cubic-bezier(0.4, 0, 0.2, 1);
+}
+
+.no-data {
+  text-align: center;
+  padding: 40px;
+  color: #909399;
+  font-size: 1.1rem;
+}
+
+@keyframes fadeIn {
+  from {
+    opacity: 0;
+    transform: translateY(10px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
 }
 </style>

@@ -713,28 +713,7 @@ const publishArticle = async () => {
       throw new Error('请先登录');
     }
 
-    const DELETE_DRAFT_URL = `${BASE_URL}/${userId}/delete-draft`;
-
-    // 构造删除草稿的请求数据
-    const draftData = {
-      title: articleForm.title,
-      content: editor.value.getText(),
-      userId: userId
-    };
-
-    // 删除草稿
-    const deleteResponse = await fetch(DELETE_DRAFT_URL, {
-      method: 'DELETE',
-      headers: {
-        'Content-Type': 'application/json'
-      },
-      credentials: 'include',
-      body: JSON.stringify(draftData)
-    });
-
-    const deleteResult = await deleteResponse.json();
-
-    // 构造发布数据
+    // 构造文章数据
     const articleData = {
       title: articleForm.title,
       content: editor.value.getText(),
@@ -750,6 +729,7 @@ const publishArticle = async () => {
       tags: Array.from(articleForm.tags || [])
     };
 
+    // 直接发布新文章或更新现有文章
     let response;
     if (articleId.value) {
       response = await updateArticle(articleData, userId);
@@ -760,13 +740,20 @@ const publishArticle = async () => {
     if (response.code === 200) {
       ElMessage.success('文章发布成功');
       publishDialogVisible.value = false;
-      if (articleId.value) {
+
+      // 发布成功后直接跳转
+      if (response.data?.id) {
+        await router.push(`/article/${response.data.id}`);
+      } else if (articleId.value) {
         await router.push(`/article/${articleId.value}`);
       } else {
         await router.push('/forum');
       }
+    } else {
+      throw new Error(response.msg || '发布失败');
     }
   } catch (error) {
+    console.error('发布文章失败:', error);
     ElMessage.error(error.message || '文章发布失败');
   } finally {
     isPublishing.value = false;

@@ -4,13 +4,16 @@
       <!-- 左侧导航栏 -->
       <el-col :span="4" class="menu-col">
         <div class="menu-container">
-          <div class="menu-header">
-            <span class="menu-title">设置</span>
-          </div>
           <el-menu
               class="el-menu-vertical"
               :default-active="activeIndex"
               @select="handleSelect">
+            <!-- 返回按钮 -->
+            <el-menu-item index="back" @click="handleBack" class="menu-item">
+              <el-icon><ArrowLeft /></el-icon>
+              <span>返回个人中心</span>
+            </el-menu-item>
+            <el-divider />
             <el-menu-item index="1" class="menu-item">
               <el-icon><Lock /></el-icon>
               <span>账号安全</span>
@@ -281,12 +284,19 @@
 <script setup>
 import { ref, reactive, watch, onMounted } from 'vue'
 import { ElMessage } from 'element-plus'
-import { Bell, Lock, Monitor, Setting } from '@element-plus/icons-vue'
+import { Bell, Lock, Monitor, Setting, ArrowLeft } from '@element-plus/icons-vue'
 import axios from 'axios'
 import { useStore } from 'vuex'
+import { useRouter } from 'vue-router'
 
+const router = useRouter()
 const store = useStore()
 const userId = store.state.user?.id
+
+// 添加返回处理函数
+const handleBack = () => {
+  router.push('/editInformation')
+}
 
 // 当前选中的菜单项
 const activeIndex = ref('1')
@@ -412,6 +422,10 @@ const fetchUserSettings = async () => {
 
 // 菜单选择处理
 const handleSelect = (key) => {
+  if (key === 'back') {
+    handleBack()
+    return
+  }
   activeIndex.value = key
 }
 
@@ -630,6 +644,7 @@ onMounted(() => {
   fetchUserSettings()
 })
 </script>
+
 <style scoped>
 .page-container {
   min-height: calc(100vh - 48px);
@@ -793,5 +808,14 @@ onMounted(() => {
   .verification-code .el-button {
     width: 100%;
   }
+}
+
+/* 新增返回按钮样式 */
+.menu-item.back-button {
+  margin-bottom: 8px;
+}
+
+.el-divider {
+  margin: 8px 0;
 }
 </style>

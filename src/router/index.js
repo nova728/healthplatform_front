@@ -30,7 +30,7 @@ const routes = [
     {
         path: '/forum',
         name: 'Forum',
-        component: () => import('../views/forum.vue')
+        component: () => import('../views/forum/forum.vue')
     },
     {
         path: '/editor/:id?',
@@ -47,6 +47,11 @@ const routes = [
       path: '/setting',
       name: 'Setting',
       component: () => import('../views/setting.vue')
+    },
+    {
+        path: '/exercise-competition',
+        name: 'ExerciseCompetition',
+        component: () => import('../views/health/ExerciseAchievement.vue')
     },
     {
         path: '/healthCenter',

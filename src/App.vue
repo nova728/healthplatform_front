@@ -66,7 +66,6 @@ watch(
         <main class="main-content">
           <router-view />
         </main>
-        <Footer />
       </template>
 
       <!-- 登录/注册页面的布局 -->

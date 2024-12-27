@@ -17,13 +17,9 @@
               <el-icon><UserFilled /></el-icon>
               <span>信息设置</span>
             </el-menu-item>
-            <el-menu-item index="2" class="menu-item">
+            <el-menu-item index="2" class="menu-item" @click="router.push({ name: 'Setting' })">
               <el-icon><Lock /></el-icon>
               <span>账号设置</span>
-            </el-menu-item>
-            <el-menu-item index="3" class="menu-item">
-              <el-icon><House /></el-icon>
-              <span>创建社区</span>
             </el-menu-item>
           </el-menu>
         </div>
@@ -184,11 +180,15 @@
 <script setup>
 import { ElMessage } from 'element-plus'
 import { reactive, toRefs, ref } from 'vue'
+import { useRouter } from 'vue-router'
 import axios from 'axios'
 import store from "@/store/index.js"
 import { Camera, Edit, House, Lock, Plus, UserFilled } from "@element-plus/icons-vue"
 
 const defaultAvatar = 'https://cube.elemecdn.com/3/7c/3ea6beec64369c2642b92c6726f1epng.png'
+const router=useRouter();
+
+
 
 const state = reactive({
   avatarDialogVisible: false,

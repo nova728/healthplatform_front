@@ -110,7 +110,7 @@ class MedicineService {
     // 获取用户用药记录
     async getUserMedicineRecords(userId, period = 'week') {
         try {
-            const response = await request.get(`/medicines/${userId}/medicine`, {
+            const response = await request.get(`http://localhost:8088/api/medicines/${userId}/medicine`, {
                 params: { period }
             });
             return response.data;
@@ -123,7 +123,7 @@ class MedicineService {
     // 创建用药记录
     async createMedicineRecord(userId, recordData) {
         try {
-            const response = await request.post(`/medicines/${userId}/medicine`, recordData);
+            const response = await request.post(`http://localhost:8088/api/medicines/${userId}/medicine`, recordData);
             return response.data;
         } catch (error) {
             console.error('创建用药记录失败:', error);
@@ -135,7 +135,7 @@ class MedicineService {
     async updateMedicineRecord(userId, recordData) {
         try {
             const response = await request.put(
-                `/medicines/${userId}/medicine/${recordData.id}`,
+                `http://localhost:8088/api/medicines/${userId}/medicine/${recordData.id}`,
                 recordData
             );
             return response.data;
@@ -147,7 +147,7 @@ class MedicineService {
     // 获取用药提醒
     async getMedicineReminders(userId) {
         try {
-            const response = await request.get(`/medicines/${userId}/medicine/reminders`);
+            const response = await request.get(`http://localhost:8088/api/medicines/${userId}/medicine/reminders`);
             return response.data;
         } catch (error) {
             console.error('获取用药提醒失败:', error);
@@ -159,7 +159,7 @@ class MedicineService {
     async createMedicineReminder(userId, reminderData) {
         try {
             const response = await request.post(
-                `/medicines/${userId}/medicine/${reminderData.medicineId}/reminder`,
+                `http://localhost:8088/api/medicines/${userId}/medicine/${reminderData.medicineId}/reminder`,
                 reminderData
             );
             return response.data;
@@ -173,7 +173,7 @@ class MedicineService {
     async updateReminderStatus(userId, reminderId, status) {
         try {
             const response = await request.put(
-                `/medicines/${userId}/medicine/reminders/${reminderId}/status`,
+                `http://localhost:8088/api/medicines/${userId}/medicine/reminders/${reminderId}/status`,
                 { isActive: status }
             );
             return response.data;
@@ -186,7 +186,7 @@ class MedicineService {
     async deleteMedicineReminder(userId, reminderId) {
         try {
             const response = await request.delete(
-                `/medicines/${userId}/medicine/reminders/${reminderId}`
+                `http://localhost:8088/api/medicines/${userId}/medicine/reminders/${reminderId}`
             );
             return response.data;
         } catch (error) {

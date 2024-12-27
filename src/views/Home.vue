@@ -2,15 +2,18 @@
   <div class="home-container">
     <!-- Hero Section -->
     <section class="hero-section">
-      <el-carousel height="500px" indicator-position="outside">
+      <el-carousel height="800px" indicator-position="outside">
         <el-carousel-item v-for="banner in banners" :key="banner.id">
-          <div class="banner-content" :style="{ backgroundImage: `url(${banner.image})` }">
-            <div class="banner-text">
-              <h1>{{ banner.title }}</h1>
-              <p>{{ banner.description }}</p>
-              <el-button type="primary" size="large" @click="navigateTo(banner.link)">
-                了解更多
-              </el-button>
+          <div class="banner-wrapper">
+            <img :src="banner.image" :alt="banner.title" class="banner-image" />
+            <div class="banner-content">
+              <div class="banner-text">
+                <h1>{{ banner.title }}</h1>
+                <p>{{ banner.description }}</p>
+                <el-button type="primary" size="large" @click="navigateTo(banner.link)">
+                  了解更多
+                </el-button>
+              </div>
             </div>
           </div>
         </el-carousel-item>
@@ -26,34 +29,9 @@
       <el-row :gutter="20">
         <el-col v-for="item in quickAccess" :key="item.id" :xs="12" :sm="8" :md="6">
           <el-card class="quick-access-card" shadow="hover" @click="navigateTo(item.link)">
-            <img :src="item.icon" :alt="item.title" class="quick-icon" />
+            <component :is="item.icon" class="quick-icon" />
             <h3>{{ item.title }}</h3>
             <p>{{ item.description }}</p>
-          </el-card>
-        </el-col>
-      </el-row>
-    </section>
-
-    <!-- Health Insights Section -->
-    <section class="health-insights">
-      <div class="section-title">
-        <h2>健康洞察</h2>
-        <span>专业的健康建议与文章</span>
-      </div>
-      <el-row :gutter="20">
-        <el-col v-for="article in healthArticles" :key="article.id" :xs="24" :sm="12" :md="8">
-          <el-card class="article-card" shadow="hover">
-            <img :src="article.image" :alt="article.title" class="article-image" />
-            <div class="article-content">
-              <h3>{{ article.title }}</h3>
-              <p>{{ article.summary }}</p>
-              <div class="article-footer">
-                <span>{{ article.date }}</span>
-                <el-button type="text" @click="navigateTo(article.link)">
-                  阅读更多
-                </el-button>
-              </div>
-            </div>
           </el-card>
         </el-col>
       </el-row>
@@ -66,56 +44,60 @@
         <span>发现来自社区的分享与讨论</span>
       </div>
       <el-row :gutter="20">
-        <el-col :xs="24" :sm="16">
-          <div class="hot-topics">
-            <h3>热门话题</h3>
-            <el-card v-for="topic in hotTopics" :key="topic.id" class="topic-card" shadow="hover">
-              <div class="topic-header">
-                <el-avatar :src="topic.authorAvatar" size="small" />
-                <span class="author-name">{{ topic.author }}</span>
-                <span class="topic-time">{{ topic.time }}</span>
-              </div>
-              <div class="topic-content">
-                <h4>{{ topic.title }}</h4>
-                <p>{{ topic.preview }}</p>
-              </div>
-              <div class="topic-footer">
-                <span><i class="el-icon-view"></i> {{ topic.views }}</span>
-                <span><i class="el-icon-chat-dot-round"></i> {{ topic.comments }}</span>
-                <span><i class="el-icon-star-off"></i> {{ topic.likes }}</span>
-              </div>
-            </el-card>
-          </div>
+        <el-col :span="16">
+          <HotRanking
+              :articles="hotArticles"
+              :loading="loading"
+              :error="error"
+          />
         </el-col>
-        <el-col :xs="24" :sm="8">
-          <div class="community-stats">
-            <el-card shadow="never" class="stats-card">
-              <h3>社区数据</h3>
-              <div class="stat-item">
-                <div class="stat-value">{{ communityStats.members }}</div>
-                <div class="stat-label">活跃会员</div>
-              </div>
-              <div class="stat-item">
-                <div class="stat-value">{{ communityStats.posts }}</div>
-                <div class="stat-label">总帖子数</div>
-              </div>
-              <div class="stat-item">
-                <div class="stat-value">{{ communityStats.todayPosts }}</div>
-                <div class="stat-label">今日新帖</div>
-              </div>
-            </el-card>
-          </div>
+        <el-col :span="8">
+          <el-card class="stats-card">
+            <h3>社区数据</h3>
+            <div class="stat-item">
+              <div class="stat-value">{{ communityStats.members }}</div>
+              <div class="stat-label">活跃会员</div>
+            </div>
+            <div class="stat-item">
+              <div class="stat-value">{{ communityStats.posts }}</div>
+              <div class="stat-label">总帖子数</div>
+            </div>
+            <div class="stat-item">
+              <div class="stat-value">{{ communityStats.todayPosts }}</div>
+              <div class="stat-label">今日新帖</div>
+            </div>
+          </el-card>
         </el-col>
       </el-row>
     </section>
+
+    <Footer />
   </div>
 </template>
 
 <script setup>
-import { ref } from 'vue';
-import { useRouter } from 'vue-router';
+import {
+  Activity,
+  Pill,
+  Dumbbell,
+  Apple,
+  FileText,
+  Trophy,
+  Users,
+  Bookmark
+} from 'lucide-vue-next'
+import {ref, onMounted} from 'vue'
+import {useRouter} from 'vue-router'
+import HotRanking from '@/components/HotRanking.vue'
+import Footer from '@/components/Footer.vue'
+import axios from 'axios'
+import {ElMessage} from 'element-plus'
 
-const router = useRouter();
+
+const router = useRouter()
+const loading = ref(true)
+const error = ref('')
+const hotArticles = ref([])
 
 // Banner数据
 const banners = ref([
@@ -123,89 +105,149 @@ const banners = ref([
     id: 1,
     title: '科学管理健康数据',
     description: '使用智能工具追踪您的健康指标',
-    image: '/src/assets/images/banner1.jpg',
+    image: '/src/assets/images/cover1.jpg',
     link: 'HealthCenter'
   },
   {
     id: 2,
     title: '加入健康社区',
     description: '与志同道合的人分享经验和建议',
-    image: '/src/assets/images/banner2.jpg',
+    image: '/src/assets/images/cover2.jpg',
     link: 'Forum'
   }
-]);
+])
 
-// 快捷功能
+// 快捷功能数据
 const quickAccess = ref([
   {
     id: 1,
-    title: '健康记录',
-    description: '记录日常健康数据',
-    icon: '/src/assets/images/icon/health-record.png',
-    link: 'HealthRecord'
+    title: '健康数据',
+    description: '记录管理健康指标',
+    icon: Activity,
+    link: '/healthCenter/health-data'
   },
   {
     id: 2,
-    title: '数据分析',
-    description: '查看健康趋势分析',
-    icon: '/src/assets/images/icon/analysis.png',
-    link: 'Analysis'
+    title: '用药管理',
+    description: '智能提醒按时服药',
+    icon: Pill,
+    link: '/healthCenter/medicine'
   },
   {
     id: 3,
-    title: '健康社区',
-    description: '参与健康话题讨论',
-    icon: '/src/assets/images/icon/community.png',
-    link: 'Forum'
+    title: '运动记录',
+    description: '记录运动和锻炼',
+    icon: Dumbbell,
+    link: '/healthCenter/exercise-record'
   },
   {
     id: 4,
-    title: '在线咨询',
-    description: '专业医生在线解答',
-    icon: '/src/assets/images/icon/consultation.png',
-    link: 'Consultation'
+    title: '饮食记录',
+    description: '记录每日饮食',
+    icon: Apple,
+    link: '/healthCenter/diet-record'
+  },
+  {
+    id: 5,
+    title: '健康报告',
+    description: '定期健康分析',
+    icon: FileText,
+    link: '/healthCenter/health-report'
+  },
+  {
+    id: 6,
+    title: '运动竞赛',
+    description: '参与健康挑战',
+    icon: Trophy,
+    link: '/healthCenter/health-competition'
+  },
+  {
+    id: 7,
+    title: '健康社区',
+    description: '分享健康经验',
+    icon: Users,
+    link: '/forum'
+  },
+  {
+    id: 8,
+    title: '我的收藏',
+    description: '收藏的文章',
+    icon: Bookmark,
+    link: '/my-favorites'
   }
-]);
+])
 
-// 健康文章
-const healthArticles = ref([
-  {
-    id: 1,
-    title: '科学饮食指南：平衡营养的重要性',
-    summary: '了解如何通过均衡饮食提升身体健康状况...',
-    image: '/src/assets/images/article1.jpg',
-    date: '2024-03-15',
-    link: 'article/1'
-  },
-  // ... 更多文章
-]);
-
-// 热门话题
-const hotTopics = ref([
-  {
-    id: 1,
-    author: '健康达人',
-    authorAvatar: '/src/assets/images/avatar1.jpg',
-    title: '分享：我的运动减重经历',
-    preview: '坚持运动三个月，成功减重15公斤...',
-    time: '2小时前',
-    views: 1234,
-    comments: 56,
-    likes: 89
-  },
-  // ... 更多话题
-]);
-
-// 社区统计
+// 社区统计数据
 const communityStats = ref({
-  members: '12,345',
-  posts: '45,678',
-  todayPosts: '123'
+  members: 0,
+  posts: 0,
+  todayPosts: 0
 });
 
-const navigateTo = (route) => {
-  router.push({ name: route });
+// 获取社区统计数据
+const fetchCommunityStats = async () => {
+  try {
+    // 获取所有用户数量
+    const usersResponse = await axios.get('http://localhost:8088/api/user/count');
+    if (usersResponse.data.code === 200) {
+      communityStats.value.members = usersResponse.data.data;
+    }
+
+    // 获取文章总数
+    const postsResponse = await axios.get('http://localhost:8088/api/articles/count');
+    if (postsResponse.data.code === 200) {
+      communityStats.value.posts = postsResponse.data.data;
+    }
+
+    // 获取今日发布的文章数
+    const todayPostsResponse = await axios.get('http://localhost:8088/api/articles/count/today');
+    if (todayPostsResponse.data.code === 200) {
+      communityStats.value.todayPosts = todayPostsResponse.data.data;
+    }
+  } catch (error) {
+    console.error('获取社区统计数据失败:', error);
+    ElMessage.error('获取社区统计数据失败');
+  }
 };
+
+// 获取热门文章
+const fetchHotArticles = async () => {
+  try {
+    loading.value = true
+    error.value = ''
+    const response = await axios.get('http://localhost:8088/api/articles/list/hot')
+    if (response.data.code === 200) {
+      // 计算热度分数
+      hotArticles.value = response.data.data.map(article => ({
+        ...article,
+        hotScore: article.viewCount + article.likeCount * 3 + article.commentCount * 5,
+        isHot: (article.viewCount + article.likeCount * 3 + article.commentCount * 5) > 1000
+      }))
+    } else {
+      error.value = response.data.message || '获取热门文章失败'
+      ElMessage.error(error.value)
+    }
+  } catch (err) {
+    error.value = '获取热门文章失败'
+    console.error('获取热门文章失败:', err)
+    ElMessage.error(error.value)
+  } finally {
+    loading.value = false
+  }
+}
+
+// 页面导航
+const navigateTo = (route) => {
+  router.push(route)
+}
+
+// 页面加载时获取热门文章
+onMounted(() => {
+  Promise.all([
+    fetchHotArticles(),
+    fetchCommunityStats()
+  ]);
+});
 </script>
 
 <style scoped>
@@ -215,16 +257,14 @@ const navigateTo = (route) => {
   padding: 0 20px;
   height: 100%;
   overflow-y: auto;
-  /* 隐藏滚动条但保持滚动功能 */
   -ms-overflow-style: none;
   scrollbar-width: none;
 }
-/* 针对 Webkit 浏览器隐藏滚动条 */
+
 .home-container::-webkit-scrollbar {
   display: none;
 }
 
-/* 确保各个section的间距合理 */
 .hero-section,
 .quick-access,
 .health-insights,
@@ -232,30 +272,29 @@ const navigateTo = (route) => {
   margin-bottom: 40px;
 }
 
-/* 调整 carousel 高度，避免在小屏幕上太高 */
-.hero-section .el-carousel {
-  height: auto;
+.banner-wrapper {
+  position: relative;
+  width: 100%;
+  height: 800px;
+  overflow: hidden;
 }
 
-.hero-section .el-carousel__item {
-  height: 400px; /* 降低轮播图高度 */
-}
-.home-container {
-  max-width: 1200px;
-  margin: 0 auto;
-  padding: 20px;
-}
-
-.hero-section {
-  margin-bottom: 40px;
+.banner-image {
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+  object-position: center;
 }
 
 .banner-content {
+  position: absolute;
+  top: 0;
+  left: 0;
+  width: 100%;
   height: 100%;
-  background-size: cover;
-  background-position: center;
   display: flex;
   align-items: center;
+  justify-content: center;
   padding: 0 60px;
 }
 
@@ -263,11 +302,27 @@ const navigateTo = (route) => {
   max-width: 500px;
   color: #fff;
   text-shadow: 0 2px 4px rgba(0, 0, 0, 0.3);
+  text-align: center;
+  z-index: 1;
 }
 
 .banner-text h1 {
-  font-size: 2.5em;
+  font-size: 2.8em;
   margin-bottom: 20px;
+  font-weight: bold;
+  color: #ffffff;
+  -webkit-text-stroke: 2px #409EFF;
+  text-stroke: 2px #409EFF;
+  text-shadow: -1px -1px 0 #409EFF,
+  1px -1px 0 #409EFF,
+  -1px 1px 0 #409EFF,
+  1px 1px 0 #409EFF;
+}
+
+.banner-text p {
+  font-size: 1.2em;
+  margin-bottom: 30px;
+  line-height: 1.6;
 }
 
 .section-title {
@@ -286,26 +341,52 @@ const navigateTo = (route) => {
   font-size: 16px;
 }
 
+.quick-access {
+  padding: 40px 0;
+}
+
 .quick-access-card {
-  text-align: center;
-  padding: 20px;
-  cursor: pointer;
-  transition: all 0.3s ease;
+  background: #ffffff;
+  border-radius: 16px;
+  padding: 24px;
+  box-shadow: 0 2px 12px rgba(0, 0, 0, 0.05);
+  transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+  border: 1px solid rgba(0, 0, 0, 0.05);
 }
 
 .quick-access-card:hover {
-  transform: translateY(-5px);
+  transform: translateY(-8px);
+  box-shadow: 0 8px 24px rgba(0, 0, 0, 0.12);
+  border-color: var(--el-color-primary);
 }
 
 .quick-icon {
-  width: 60px;
-  height: 60px;
-  margin-bottom: 15px;
+  width: 48px;
+  height: 48px;
+  margin-bottom: 20px;
+  padding: 10px;
+  border-radius: 12px;
+  background: var(--el-color-primary-light-9);
+  color: var(--el-color-primary);
 }
+
+.quick-access-card h3 {
+  font-size: 18px;
+  font-weight: 600;
+  margin-bottom: 8px;
+  color: #303133;
+}
+
+.quick-access-card p {
+  color: #606266;
+  font-size: 14px;
+  line-height: 1.6;
+}
+
 
 .article-card {
   margin-bottom: 20px;
-  overflow: hidden;
+  height: 100%;
 }
 
 .article-image {
@@ -318,6 +399,18 @@ const navigateTo = (route) => {
   padding: 15px;
 }
 
+.article-content h3 {
+  margin: 0 0 10px 0;
+  font-size: 18px;
+  color: #303133;
+}
+
+.article-content p {
+  margin: 0;
+  color: #666;
+  line-height: 1.6;
+}
+
 .article-footer {
   display: flex;
   justify-content: space-between;
@@ -326,56 +419,56 @@ const navigateTo = (route) => {
   color: #909399;
 }
 
-.topic-card {
-  margin-bottom: 15px;
-}
-
-.topic-header {
-  display: flex;
-  align-items: center;
-  gap: 10px;
-  margin-bottom: 10px;
-}
-
-.author-name {
-  font-weight: 500;
-}
-
-.topic-time {
-  color: #909399;
-  font-size: 12px;
-  margin-left: auto;
-}
-
-.topic-footer {
-  display: flex;
-  gap: 20px;
-  margin-top: 10px;
-  color: #909399;
-}
-
+/* 社区统计卡片样式 */
 .stats-card {
-  text-align: center;
-  padding: 20px;
+  border-radius: 16px;
+  padding: 24px;
+  background: linear-gradient(135deg, #ffffff, #f8f9fa);
+  box-shadow: 0 4px 20px rgba(0, 0, 0, 0.08);
+}
+
+.stats-card h3 {
+  font-size: 20px;
+  font-weight: 600;
+  color: #303133;
+  margin-bottom: 24px;
+  padding-bottom: 16px;
+  border-bottom: 2px solid var(--el-color-primary-light-7);
 }
 
 .stat-item {
-  margin: 15px 0;
+  padding: 16px;
+  margin: 12px 0;
+  background: rgba(64, 158, 255, 0.05);
+  border-radius: 12px;
+  transition: all 0.3s ease;
+}
+
+.stat-item:hover {
+  background: rgba(64, 158, 255, 0.1);
+  transform: scale(1.02);
 }
 
 .stat-value {
-  font-size: 24px;
-  font-weight: bold;
-  color: var(--el-color-primary);
+  font-size: 28px;
+  font-weight: 700;
+  background: linear-gradient(45deg, var(--el-color-primary), var(--el-color-primary-light-3));
+  -webkit-background-clip: text;
+  -webkit-text-fill-color: transparent;
+  margin-bottom: 4px;
 }
 
 .stat-label {
-  color: #909399;
-  margin-top: 5px;
+  color: #606266;
+  font-size: 14px;
+  font-weight: 500;
 }
-
-/* 响应式调整 */
+/* 响应式布局 */
 @media (max-width: 768px) {
+  .banner-wrapper {
+    height: 400px;
+  }
+
   .banner-content {
     padding: 0 20px;
   }
@@ -384,8 +477,20 @@ const navigateTo = (route) => {
     font-size: 2em;
   }
 
+  .banner-text p {
+    font-size: 1.1em;
+  }
+
   .quick-access-card {
     margin-bottom: 15px;
+  }
+
+  .home-container {
+    padding: 10px;
+  }
+
+  .section-title h2 {
+    font-size: 24px;
   }
 }
 </style>

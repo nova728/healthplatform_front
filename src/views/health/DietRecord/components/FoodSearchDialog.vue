@@ -1,17 +1,17 @@
 <template>
   <el-dialog
-    v-model="dialogVisible"
-    title="添加食物"
-    width="70%"
-    :before-close="handleClose"
+      v-model="dialogVisible"
+      title="添加食物"
+      width="70%"
+      :before-close="handleClose"
   >
     <!-- 搜索区域 -->
     <div class="search-section">
       <el-input
-        v-model="searchQuery"
-        placeholder="搜索食物名称"
-        clearable
-        @input="handleSearch"
+          v-model="searchQuery"
+          placeholder="搜索食物名称"
+          clearable
+          @input="handleSearch"
       >
         <template #prefix>
           <el-icon><Search /></el-icon>
@@ -23,9 +23,9 @@
     <div class="search-results" v-loading="searching">
       <template v-if="searchResults.length">
         <el-table
-          :data="searchResults"
-          height="400"
-          @row-click="handleFoodSelect"
+            :data="searchResults"
+            height="400"
+            @row-click="handleFoodSelect"
         >
           <el-table-column prop="foodName" label="食物名称" />
           <el-table-column label="营养成分(每100g)" width="400">
@@ -41,9 +41,9 @@
           <el-table-column label="操作" width="120" fixed="right">
             <template #default="scope">
               <el-button
-                type="primary"
-                size="small"
-                @click.stop="handleFoodSelect(scope.row)"
+                  type="primary"
+                  size="small"
+                  @click.stop="handleFoodSelect(scope.row)"
               >
                 选择
               </el-button>
@@ -52,17 +52,17 @@
         </el-table>
       </template>
       <el-empty
-        v-else-if="!searching"
-        description="暂无搜索结果"
+          v-else-if="!searching"
+          description="暂无搜索结果"
       />
     </div>
 
     <!-- 食物份量设置对话框 -->
     <el-dialog
-      v-model="servingDialogVisible"
-      title="设置份量"
-      width="30%"
-      append-to-body
+        v-model="servingDialogVisible"
+        title="设置份量"
+        width="30%"
+        append-to-body
     >
       <div class="serving-form">
         <div class="selected-food-info">
@@ -81,11 +81,11 @@
         <el-form :model="servingForm" label-width="100px">
           <el-form-item label="食用份量">
             <el-input-number
-              v-model="servingForm.amount"
-              :min="0"
-              :precision="1"
-              :step="0.5"
-              @change="calculateNutrition"
+                v-model="servingForm.amount"
+                :min="0"
+                :precision="1"
+                :step="0.5"
+                @change="calculateNutrition"
             />
             <span class="unit">{{ selectedFood?.servingUnit || 'g' }}</span>
           </el-form-item>
@@ -101,7 +101,7 @@
           </div>
         </div>
       </div>
-      
+
       <template #footer>
         <div class="dialog-footer">
           <el-button @click="servingDialogVisible = false">取消</el-button>
@@ -183,7 +183,7 @@ const handleFoodSelect = (food) => {
 // 计算实际营养
 const calculateNutrition = () => {
   if (!selectedFood.value) return
-  
+
   const ratio = servingForm.value.amount / 100
   calculatedNutrition.value = {
     calories: (selectedFood.value.calories * ratio).toFixed(1),
@@ -196,14 +196,14 @@ const calculateNutrition = () => {
 // 确认添加食物
 const confirmServing = () => {
   if (!selectedFood.value) return
-  
+
   const foodRecord = {
     ...selectedFood.value,
     ...calculatedNutrition.value,
     servingAmount: servingForm.value.amount,
     mealType: props.mealType
   }
-  
+
   emit('confirm', foodRecord)
   servingDialogVisible.value = false
   dialogVisible.value = false
@@ -226,8 +226,43 @@ const handleClose = () => {
 </script>
 
 <style scoped>
+:deep(.el-dialog) {
+  border-radius: 24px;
+  overflow: hidden;
+  box-shadow: 0 12px 40px rgba(0, 0, 0, 0.15);
+  animation: dialogFadeIn 0.4s ease-out;
+}
+
 .search-section {
-  margin-bottom: 20px;
+  margin-bottom: 24px;
+}
+
+:deep(.el-input) {
+  border-radius: 12px;
+  overflow: hidden;
+  transition: all 0.3s ease;
+}
+
+:deep(.el-input:focus-within) {
+  transform: translateY(-2px);
+  box-shadow: 0 4px 12px rgba(59, 130, 246, 0.2);
+}
+
+.serving-form {
+  padding: 24px;
+  background: linear-gradient(145deg, #ffffff, #f0f0f0);
+  border-radius: 20px;
+}
+
+@keyframes dialogFadeIn {
+  from {
+    opacity: 0;
+    transform: scale(0.95);
+  }
+  to {
+    opacity: 1;
+    transform: scale(1);
+  }
 }
 
 .search-results {
@@ -238,10 +273,6 @@ const handleClose = () => {
 .nutrition-info {
   display: flex;
   gap: 16px;
-}
-
-.serving-form {
-  padding: 20px;
 }
 
 .selected-food-info {
