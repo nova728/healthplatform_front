@@ -59,6 +59,15 @@ const routes = [
                 component: () => import('../views/health/healthData.vue')
             },
             {
+                path: 'medicine',
+                name: 'MedicineManagement',
+                component: () => import('@/components/MedicineManagement.vue'),
+                meta: {
+                    requiresAuth: true,
+                    title: '用药管理'
+                }
+            },
+            {
                 path: 'exercise-record',
                 name: 'ExerciseRecord',
                 component: () => import('../views/health/ExerciseRecord.vue')
@@ -125,6 +134,11 @@ const routes = [
         path: '/my-articles',
         name: 'MyArticles',
         component:()=>import ('../views/MyArticles.vue'),
+    },
+    {
+        path: '/my-favorites',
+        name: 'MyFavorites',
+        component: () => import('../views/MyFavorites.vue')
     }
 ]
 

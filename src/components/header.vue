@@ -117,6 +117,7 @@ import { ref, inject,computed,onMounted, onBeforeUnmount, watch } from 'vue';
 import { useRouter } from 'vue-router';
 import { useStore } from 'vuex';
 import { Bell } from 'lucide-vue-next';
+import dayjs from 'dayjs';
 import { ElMessage } from 'element-plus';
 
 const router = useRouter();
@@ -142,75 +143,59 @@ const MAX_RECONNECT_ATTEMPTS = 5;
 const initWebSocket = () => {
   if (isLoggedIn.value && user.value?.id) {
     try {
-      ws = new WebSocket(`ws://localhost:8088/api/ws/notifications/${user.value.id}`);
-      
+      console.log('Initializing WebSocket connection...');
+      ws = new WebSocket(`ws://localhost:8088/ws/notifications/${user.value.id}`);
+
       ws.onopen = () => {
-        console.log('WebSocket 连接成功');
-        reconnectAttempts = 0; // 重置重连次数
+        console.log('WebSocket connection established');
+        reconnectAttempts = 0; // 重置重连计数
       };
-      
+
       ws.onmessage = (event) => {
         try {
+          console.log('Received WebSocket message:', event.data);
           const notification = JSON.parse(event.data);
           notifications.value.unshift(notification);
-          // 更新未读消息数
-          unreadCount.value = notifications.value.filter(n => !n.isRead).length;
+
+          // 显示通知提示
+          ElMessage({
+            message: notification.message,
+            type: 'info',
+            duration: 3000
+          });
         } catch (error) {
-          console.error('解析WebSocket消息失败:', error);
+          console.error('Error processing notification:', error);
         }
       };
-      
+
       ws.onerror = (error) => {
-        console.error('WebSocket错误:', error);
+        console.error('WebSocket error:', error);
+      };
+
+      ws.onclose = (event) => {
+        console.log('WebSocket connection closed:', event.code, event.reason);
         handleReconnect();
       };
-      
-      ws.onclose = () => {
-        console.log('WebSocket连接关闭');
-        handleReconnect();
-      };
+
     } catch (error) {
-      console.error('WebSocket初始化失败:', error);
+      console.error('Error creating WebSocket connection:', error);
       handleReconnect();
     }
   }
 };
 
-// 处理重连逻辑
 const handleReconnect = () => {
   if (reconnectAttempts < MAX_RECONNECT_ATTEMPTS) {
     reconnectAttempts++;
-    const delay = Math.min(1000 * Math.pow(2, reconnectAttempts), 30000); // 指数退避，最大30秒
-    console.log(`尝试第 ${reconnectAttempts} 次重连，延迟 ${delay}ms`);
-    
+    console.log(`Attempting to reconnect (${reconnectAttempts}/${MAX_RECONNECT_ATTEMPTS})...`);
+    const timeout = Math.min(1000 * Math.pow(2, reconnectAttempts), 30000);
     setTimeout(() => {
-      if (ws?.readyState === WebSocket.CLOSED) {
-        initWebSocket();
-      }
-    }, delay);
+      initWebSocket();
+    }, timeout);
   } else {
-    console.error('WebSocket重连失败，已达到最大重试次数');
-    ElMessage.error('通知服务连接失败，请刷新页面重试');
+    console.log('Max reconnection attempts reached');
   }
 };
-
-// 在组件卸载前关闭连接
-onBeforeUnmount(() => {
-  if (ws) {
-    ws.close();
-    ws = null;
-  }
-});
-
-// 在用户登录状态改变时重新初始化WebSocket
-watch(() => isLoggedIn.value, (newVal) => {
-  if (newVal) {
-    initWebSocket();
-  } else if (ws) {
-    ws.close();
-    ws = null;
-  }
-});
 
 // 获取通知列表
 const fetchNotifications = async (retryCount = 3) => {
@@ -279,13 +264,19 @@ const formatTime = (time) => {
 onMounted(async () => {
   if (isLoggedIn.value) {
     try {
-      console.log('头像：',userAvatar.value);
       await fetchNotifications();
       initWebSocket();
-//await store.dispatch('getUserInfo'); // 确保在 Vuex 中实现此 action
     } catch (error) {
-      console.error('Failed to fetch user info:', error);
+      console.error('Error during initialization:', error);
     }
+  }
+});
+
+onBeforeUnmount(() => {
+  if (ws) {
+    console.log('Closing WebSocket connection...');
+    ws.close();
+    ws = null;
   }
 });
 
@@ -309,12 +300,18 @@ const userMenuItems = [
   },
   {
     index: '3-2',
+    label: '我的收藏',
+    icon: '/src/assets/images/icon/star.png',
+    action: () => router.push({ name: 'MyFavorites' })
+  },
+  {
+    index: '3-3',
     label: '个人中心',
     icon: '/src/assets/images/icon/person.png',
     action: () => router.push({ name: 'EditInformation' })
   },
   {
-    index: '3-3',
+    index: '3-4',
     label: '退出登录',
     icon: '/src/assets/images/icon/logout.png',
     action: () => store.dispatch('logoutUser')
@@ -439,8 +436,9 @@ const handleSelect = (key, keyPath) => console.log(key, keyPath);
 .notification-badge :deep(.el-badge__content) {
   background-color: #f56c6c;
   z-index: 10;
+  top: 10px !important; /* 调整红点的垂直位置 */
+  right: 5px !important; /* 调整红点的水平位置 */
 }
-
 .notification-icon {
   width: 24px;
   height: 24px;

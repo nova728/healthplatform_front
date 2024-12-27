@@ -2,7 +2,7 @@
   <div class="health-report">
     <div class="report-header">
       <h2>健康报告</h2>
-      <el-button type="primary" @click="generateReport">
+      <el-button type="primary" @click="generateReport" :loading="loading">
         <el-icon><DocumentAdd /></el-icon>
         生成新报告
       </el-button>
@@ -40,21 +40,80 @@
       </div>
     </el-card>
 
-    <!-- 健康趋势图表 -->
-    <div class="trends-section">
-      <el-card class="trend-card">
+    <div class="statistics-section">
+      <el-card class="statistics-card">
         <template #header>
           <div class="card-header">
-            <span>健康指标趋势</span>
-            <el-radio-group v-model="selectedMetric" size="small">
-              <el-radio-button value="weight">体重</el-radio-button>
-              <el-radio-button value="sleep">睡眠</el-radio-button>
-              <el-radio-button value="steps">步数</el-radio-button>
-              <el-radio-button value="heartRate">心率</el-radio-button>
-            </el-radio-group>
+            <span>健康数据统计</span>
+            <el-select
+                v-model="timeRange"
+                size="small"
+                placeholder="选择时间范围"
+                @change="loadStatistics"
+                class="time-range-select">
+              <el-option label="最近一周" value="week" />
+              <el-option label="最近一月" value="month" />
+              <el-option label="最近三月" value="quarter" />
+            </el-select>
           </div>
         </template>
-        <div class="chart-container" ref="trendChartRef"></div>
+
+        <div class="statistics-grid">
+          <div class="stat-item">
+            <div class="stat-icon">
+              <el-icon><Timer /></el-icon>
+            </div>
+            <div class="stat-content">
+              <div class="stat-value">{{ statistics.totalExerciseTime || 0 }}h</div>
+              <div class="stat-label">运动总时长</div>
+            </div>
+          </div>
+
+          <div class="stat-item">
+            <div class="stat-icon">
+              <el-icon><Aim /></el-icon>
+            </div>
+            <div class="stat-content">
+              <div class="stat-value">{{ statistics.avgCalories || 0 }}kcal</div>
+              <div class="stat-label">平均消耗</div>
+            </div>
+          </div>
+
+          <div class="stat-item">
+            <div class="stat-icon">
+              <el-icon><LocationInformation /></el-icon>
+            </div>
+            <div class="stat-content">
+              <div class="stat-value">{{ statistics.exerciseCount || 0 }}次</div>
+              <div class="stat-label">运动次数</div>
+            </div>
+          </div>
+
+          <div class="stat-item">
+            <div class="stat-icon">
+              <el-icon><MoonNight /></el-icon>
+            </div>
+            <div class="stat-content">
+              <div class="stat-value">{{ statistics.avgSleepDuration || 0 }}h</div>
+              <div class="stat-label">平均睡眠</div>
+            </div>
+          </div>
+        </div>
+
+        <div class="achievement-section">
+          <h4>达标情况</h4>
+          <div class="achievement-list">
+            <el-progress
+                v-for="(item, index) in achievements"
+                :key="index"
+                :percentage="item.percentage"
+                :color="item.color"
+                :format="() => item.label"
+                :stroke-width="10"
+                class="achievement-item"
+            />
+          </div>
+        </div>
       </el-card>
     </div>
 
@@ -114,7 +173,7 @@
       <template #footer>
         <span class="dialog-footer">
           <el-button @click="dialogVisible = false">取消</el-button>
-          <el-button type="primary" @click="handleGenerateReport">
+          <el-button type="primary" @click="handleGenerateReport" :loading="loading">
             生成报告
           </el-button>
         </span>
@@ -124,26 +183,55 @@
 </template>
 
 <script setup>
-import { ref, onMounted, onUnmounted } from 'vue'
-import { DocumentAdd } from '@element-plus/icons-vue'
+import { ref, onMounted, onUnmounted, computed } from 'vue'
+import { DocumentAdd,Timer, Aim, LocationInformation, MoonNight } from '@element-plus/icons-vue'
 import * as echarts from 'echarts'
-import {ElMessage} from "element-plus";
+import { ElMessage } from 'element-plus'
+import { getHealthScore, generateHealthReport, getTrendData } from '@/api/health-report.js'
+import { useStore } from 'vuex'
+
+const store = useStore()
+const userId = computed(() => store.state.user?.id)
+const loading = ref(false)
+
+const timeRange = ref('week')
+
+const statistics = ref({
+  totalExerciseTime: 0,
+  avgCalories: 0,
+  exerciseCount: 0,
+  avgSleepDuration: 0
+})
 
 // 健康评分
-const healthScore = ref(85)
+const healthScore = ref(0)
 const scoreColors = [
   { color: '#f56c6c', percentage: 60 },
   { color: '#e6a23c', percentage: 75 },
   { color: '#67c23a', percentage: 90 }
 ]
 
-// 子项评分
-const subScores = ref([
-  { label: '运动指数', value: 88, color: '#67c23a' },
-  { label: '睡眠质量', value: 82, color: '#409eff' },
-  { label: '饮食健康', value: 75, color: '#e6a23c' },
-  { label: '身体状况', value: 90, color: '#67c23a' }
+// 达标情况数据
+const achievements = ref([
+  {
+    label: '运动达标',
+    percentage: 80,
+    color: '#67c23a'
+  },
+  {
+    label: '睡眠达标',
+    percentage: 70,
+    color: '#409eff'
+  },
+  {
+    label: '营养达标',
+    percentage: 60,
+    color: '#e6a23c'
+  }
 ])
+
+// 子项评分
+const subScores = ref([])
 
 // 趋势图表
 const trendChartRef = ref(null)
@@ -151,23 +239,7 @@ const selectedMetric = ref('weight')
 let trendChart = null
 
 // 健康建议
-const healthSuggestions = ref([
-  {
-    title: '运动建议',
-    type: 'success',
-    content: '您的运动频率达标，建议继续保持每周4-5次的运动频率，可以适当增加有氧运动的强度。'
-  },
-  {
-    title: '睡眠建议',
-    type: 'warning',
-    content: '您的平均睡眠时间略低于建议值，建议调整作息时间，保证每天7-8小时的睡眠时间。'
-  },
-  {
-    title: '饮食建议',
-    type: 'info',
-    content: '根据您的饮食记录，蛋白质摄入略低，建议适当增加优质蛋白的摄入，如瘦肉、鱼类、蛋类等。'
-  }
-])
+const healthSuggestions = ref([])
 
 // 对话框控制
 const dialogVisible = ref(false)
@@ -177,25 +249,82 @@ const reportForm = ref({
   metrics: ['weight', 'sleep', 'exercise']
 })
 
-// 生成报告
-const generateReport = () => {
-  dialogVisible.value = true
+// 加载健康评分
+const loadHealthScore = async () => {
+  if (!userId.value) {
+    ElMessage.warning('请先登录')
+    return
+  }
+  try {
+    loading.value = true
+    const res = await getHealthScore(userId.value)
+    if (res.code === 200 && res.data) {  // 检查返回结果
+      healthScore.value = res.data.totalScore
+
+      // 设置子评分
+      const scores = res.data.subScores
+      subScores.value = [
+        { label: '运动指数', value: scores.exerciseScore, color: '#67c23a' },
+        { label: '睡眠质量', value: scores.sleepScore, color: '#409eff' },
+        { label: '身体状况', value: scores.physicalScore, color: '#e6a23c' }
+      ]
+    } else {
+      throw new Error(res.message || '获取数据失败')
+    }
+  } catch (error) {
+    console.error('Failed to load health score:', error)
+    ElMessage.error(error.message || '获取健康评分失败')
+  } finally {
+    loading.value = false
+  }
 }
 
-const handleGenerateReport = () => {
-  // 这里添加生成报告的逻辑
-  dialogVisible.value = false
-  ElMessage({
-    type: 'success',
-    message: '报告生成成功！'
+// 加载趋势数据
+const loadTrendData = async () => {  // 修改函数名
+  if (!userId.value) {
+    ElMessage.warning('请先登录')
+    return
+  }
+  try {
+    loading.value = true
+    const res = await getTrendData(userId.value, selectedMetric.value)
+    if (res.code === 200 && res.data) {  // 检查返回结果
+      updateTrendChart(res.data)
+    } else {
+      throw new Error(res.message || '获取数据失败')
+    }
+  } catch (error) {
+    console.error('Failed to load trend data:', error)
+    ElMessage.error(error.message || '获取趋势数据失败')
+  } finally {
+    loading.value = false
+  }
+}
+
+// 更新趋势图表
+const updateTrendChart = (data) => {
+  if (!trendChart) return
+
+  const dates = data.map(item => {
+    if (selectedMetric.value === 'weight') {
+      return new Date(item.measurementTime).toLocaleDateString()
+    } else if (selectedMetric.value === 'sleep') {
+      return new Date(item.date).toLocaleDateString()
+    } else {
+      return new Date(item.recordDate).toLocaleDateString()
+    }
   })
-}
 
-// 初始化趋势图表
-const initTrendChart = () => {
-  if (!trendChartRef.value) return
+  const values = data.map(item => {
+    switch (selectedMetric.value) {
+      case 'weight': return item.weight
+      case 'sleep': return item.duration
+      case 'steps': return item.steps
+      case 'heartRate': return item.heartRate
+      default: return 0
+    }
+  })
 
-  trendChart = echarts.init(trendChartRef.value)
   const option = {
     grid: {
       top: 40,
@@ -208,15 +337,15 @@ const initTrendChart = () => {
     },
     xAxis: {
       type: 'category',
-      data: ['周一', '周二', '周三', '周四', '周五', '周六', '周日'],
+      data: dates,
       boundaryGap: false
     },
     yAxis: {
       type: 'value',
-      name: '数值'
+      name: getMetricUnit()
     },
     series: [{
-      data: [68.5, 68.2, 68.3, 68.1, 67.9, 67.8, 67.7],
+      data: values,
       type: 'line',
       smooth: true,
       lineStyle: {
@@ -244,12 +373,89 @@ const initTrendChart = () => {
   trendChart.setOption(option)
 }
 
+// 获取度量单位
+const getMetricUnit = () => {
+  switch (selectedMetric.value) {
+    case 'weight': return '体重(kg)'
+    case 'sleep': return '睡眠时长(h)'
+    case 'steps': return '步数'
+    case 'heartRate': return '心率(bpm)'
+    default: return ''
+  }
+}
+
+// 生成报告
+const generateReport = () => {
+  dialogVisible.value = true
+}
+
+const handleGenerateReport = async () => {
+  if (!userId.value) {
+    ElMessage.warning('请先登录')
+    return
+  }
+  try {
+    loading.value = true
+    const res = await generateHealthReport(userId.value, reportForm.value)
+    if (res.code === 200 && res.data) {  // 检查返回结果
+      healthSuggestions.value = res.data.suggestions
+      dialogVisible.value = false
+      ElMessage.success('报告生成成功！')
+    } else {
+      throw new Error(res.message || '生成报告失败')
+    }
+  } catch (error) {
+    console.error('Failed to generate report:', error)
+    ElMessage.error(error.message || '生成报告失败')
+  } finally {
+    loading.value = false
+  }
+}
+
+// 初始化趋势图表
+const initTrendChart = () => {
+  if (!trendChartRef.value) return
+  trendChart = echarts.init(trendChartRef.value)
+  loadTrendData()
+}
+
 // 监听窗口大小变化
 const handleResize = () => {
   trendChart?.resize()
 }
 
+const loadStatistics = async () => {
+  if (!userId.value) {
+    ElMessage.warning('请先登录')
+    return
+  }
+
+  try {
+    loading.value = true
+    // 这里调用后端API获取统计数据
+    // const res = await getHealthStatistics(userId.value, timeRange.value)
+    // if (res.code === 200 && res.data) {
+    //   statistics.value = res.data
+    // }
+
+    // 模拟数据，实际使用时替换为真实API调用
+    statistics.value = {
+      totalExerciseTime: Math.floor(Math.random() * 20 + 10),
+      avgCalories: Math.floor(Math.random() * 300 + 200),
+      exerciseCount: Math.floor(Math.random() * 10 + 5),
+      avgSleepDuration: (Math.random() * 2 + 6).toFixed(1)
+    }
+  } catch (error) {
+    console.error('Failed to load statistics:', error)
+    ElMessage.error('获取统计数据失败')
+  } finally {
+    loading.value = false
+  }
+}
+
 onMounted(() => {
+  loadStatistics()
+  loadHealthScore()
   initTrendChart()
   window.addEventListener('resize', handleResize)
 })
@@ -325,17 +531,8 @@ onUnmounted(() => {
   color: #606266;
 }
 
-.trends-section {
-  margin-bottom: 20px;
-}
-
-.trend-card {
-  margin-bottom: 20px;
-}
-
-.chart-container {
-  height: 300px;
-  width: 100%;
+.time-range-select {
+  width: 110px; /* 设置固定宽度 */
 }
 
 .card-header {
@@ -350,6 +547,10 @@ onUnmounted(() => {
   gap: 16px;
 }
 
+.card-header :deep(.el-input__wrapper) {
+  width: 110px;
+}
+
 /* 响应式布局 */
 @media (max-width: 768px) {
   .score-content {
@@ -359,6 +560,96 @@ onUnmounted(() => {
 
   .score-details {
     width: 100%;
+  }
+}
+
+.statistics-section {
+  margin-bottom: 20px;
+}
+
+.statistics-grid {
+  display: grid;
+  grid-template-columns: repeat(4, 1fr);
+  gap: 20px;
+  margin-bottom: 24px;
+}
+
+.stat-item {
+  display: flex;
+  align-items: center;
+  padding: 16px;
+  background-color: #f8f9fa;
+  border-radius: 8px;
+  transition: all 0.3s ease;
+}
+
+.stat-item:hover {
+  transform: translateY(-2px);
+  box-shadow: 0 2px 12px 0 rgba(0,0,0,0.1);
+}
+
+.stat-icon {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 48px;
+  height: 48px;
+  margin-right: 16px;
+  border-radius: 12px;
+  background-color: #e6f2ff;
+  color: #409EFF;
+}
+
+.stat-icon .el-icon {
+  font-size: 24px;
+}
+
+.stat-content {
+  flex: 1;
+}
+
+.stat-value {
+  font-size: 24px;
+  font-weight: 600;
+  color: #303133;
+  line-height: 1.2;
+}
+
+.stat-label {
+  font-size: 14px;
+  color: #909399;
+  margin-top: 4px;
+}
+
+.achievement-section {
+  margin-top: 24px;
+}
+
+.achievement-section h4 {
+  margin-bottom: 16px;
+  color: #606266;
+  font-weight: 500;
+}
+
+.achievement-list {
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+}
+
+.achievement-item {
+  margin-bottom: 8px;
+}
+
+@media (max-width: 1200px) {
+  .statistics-grid {
+    grid-template-columns: repeat(2, 1fr);
+  }
+}
+
+@media (max-width: 768px) {
+  .statistics-grid {
+    grid-template-columns: 1fr;
   }
 }
 </style>

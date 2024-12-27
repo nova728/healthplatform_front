@@ -22,6 +22,12 @@
             <el-icon><DocumentCopy /></el-icon>
             <span>健康报告</span>
           </el-menu-item>
+          <el-menu-item index="5">
+            <template #title>
+              <el-icon><FirstAidKit /></el-icon>
+              <span>用药管理</span>
+            </template>
+          </el-menu-item>
         </el-menu>
       </div>
       <div class="content-area">
@@ -38,7 +44,7 @@
 import { ref, computed } from 'vue'
 import { useRouter, useRoute } from 'vue-router'
 import DraggableBubble from '@/components/DraggableBubble.vue'
-import { DataLine, Timer, Calendar, DocumentCopy } from '@element-plus/icons-vue'
+import { DataLine, Timer, Calendar, DocumentCopy,FirstAidKit } from '@element-plus/icons-vue'
 
 const activeIndex = ref('1')
 const router=useRouter()
@@ -65,6 +71,8 @@ const handleSelect = async (key) => {
       case '4':
         await router.push('/healthCenter/health-report')
         break
+      case '5':
+        await router.push('/healthCenter/medicine')
     }
   }catch (err) {
     console.error('Navigation error:', err)
